@@ -1,0 +1,19 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/out/**",
+    "**/build/**",
+    "**/*.md",
+    "**/*.json",
+    "**/*.lock",
+    "**/*.svg",
+    "**/public/**",
+    "**/.git/**"
+  ],
+  "minLines": 8,
+  "minTokens": 40,
+  "format": "typescript"
+}

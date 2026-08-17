@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: e2eapply
+          POSTGRES_PASSWORD: e2eapply_dev
+          POSTGRES_DB: e2eapply
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U e2eapply -d e2eapply"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://e2eapply:e2eapply_dev@localhost:5432/e2eapply
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Duplication check
+        run: npx jscpd src --config jscpd.json
+
+      - name: Build
+        run: npm run build
