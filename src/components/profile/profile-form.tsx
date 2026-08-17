@@ -56,8 +56,27 @@ type ProfileWithRelations = {
   } | null;
 };
 
-const toDateInput = (d: Date | null) =>
-  d ? new Date(d).toISOString().slice(0, 10) : "";
+const toDateInput = (d: Date | null) => {
+  if (!d) return "";
+  const date = new Date(d);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const toIntOrNull = (v: string) => {
+  const trimmed = v.trim();
+  if (trimmed === "") return null;
+  const n = Number(trimmed);
+  return Number.isNaN(n) ? null : n;
+};
+
+const splitList = (v: string) =>
+  v
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
 export function ProfileForm({
   profile,
@@ -243,7 +262,7 @@ export function ProfileForm({
             <Input
               value={skill.years === null ? "" : String(skill.years)}
               onChange={(v) =>
-                updateItem("skills", i, { years: Number(v) || null })
+                updateItem("skills", i, { years: toIntOrNull(v) })
               }
               placeholder="Yrs"
               type="number"
@@ -327,7 +346,7 @@ export function ProfileForm({
                 value={(exp.highlights ?? []).join(", ")}
                 onChange={(v) =>
                   updateItem("experiences", i, {
-                    highlights: v ? v.split(",").map((s) => s.trim()) : [],
+                    highlights: splitList(v),
                   })
                 }
               />
@@ -440,7 +459,7 @@ export function ProfileForm({
                   value={(p.technologies ?? []).join(", ")}
                   onChange={(v) =>
                     updateItem("projects", i, {
-                      technologies: v ? v.split(",").map((s) => s.trim()) : [],
+                      technologies: splitList(v),
                     })
                   }
                 />
@@ -524,7 +543,7 @@ export function ProfileForm({
               onChange={(v) =>
                 set("preferences", {
                   ...form.preferences,
-                  preferredRoles: v ? v.split(",").map((s) => s.trim()) : [],
+                  preferredRoles: splitList(v),
                 })
               }
             />
@@ -535,7 +554,7 @@ export function ProfileForm({
               onChange={(v) =>
                 set("preferences", {
                   ...form.preferences,
-                  locations: v ? v.split(",").map((s) => s.trim()) : [],
+                  locations: splitList(v),
                 })
               }
             />
@@ -546,7 +565,7 @@ export function ProfileForm({
               onChange={(v) =>
                 set("preferences", {
                   ...form.preferences,
-                  salaryFloor: Number(v) || null,
+                  salaryFloor: toIntOrNull(v),
                 })
               }
               type="number"
@@ -558,7 +577,7 @@ export function ProfileForm({
               onChange={(v) =>
                 set("preferences", {
                   ...form.preferences,
-                  minMatchPercent: Number(v) || null,
+                  minMatchPercent: toIntOrNull(v),
                 })
               }
               type="number"
@@ -582,9 +601,16 @@ export function ProfileForm({
 
       <div className="sticky bottom-4 flex items-center justify-end gap-3">
         {message && (
-          <span className="text-sm text-muted-foreground">{message}</span>
+          <span
+            role="status"
+            aria-live="polite"
+            className="text-sm text-muted-foreground"
+          >
+            {message}
+          </span>
         )}
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={isPending}
           className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
