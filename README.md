@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# E2E Apply
 
-## Getting Started
+An AI-powered job application OS — from job discovery to outcome.
 
-First, run the development server:
+Not just another CV generator. Paste a job, get an honest match score (including the reasons to skip it), a tailored CV and cover letter, and a tracker that closes the loop: applied → assessment → interview → offer, or rejection.
+
+Human-in-the-loop by design — E2E Apply drafts and pre-fills; you review and click the final submit.
+
+## Features
+
+- **Job tracking** — paste any job description and it's added to your tracker as a structured record: role, company, location, salary, requirements.
+- **Master candidate profile** — one structured profile (skills, experience, education, projects, certifications, preferences) that powers everything else.
+- **CV import** — upload a PDF or DOCX and the profile form fills itself; review and save.
+- **Match scoring** — every job gets an honest score against your profile, including the reasons you might want to skip it.
+- **Tailored documents** — CV and cover letter generated per job, always from your profile's facts — never invented.
+- **Closing the loop** — every application tracked with status history, so you always know where things stand.
+
+## Tech stack
+
+- **Frontend:** Next.js 16 (App Router, TypeScript) + Tailwind CSS 4
+- **Backend:** Next.js server actions & route handlers
+- **Database:** PostgreSQL 16 + Prisma 7
+- **Auth:** Clerk
+- **AI:** Gemini (provider-agnostic wrapper in `src/lib/ai/`)
+- **Tests:** Vitest · **CI:** GitHub Actions + SonarQube
+
+## Getting started
+
+Prerequisites: Node 20+, Docker.
 
 ```bash
+npm install
+docker compose up -d
+cp .env.example .env.local      # add your keys (see below)
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000, sign up, and build your profile at `/profile`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Where to get it |
+|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk dashboard → API Keys |
+| `CLERK_SECRET_KEY` | Clerk dashboard → API Keys |
+| `CLERK_WEBHOOK_SECRET` | Clerk dashboard → Webhooks |
+| `DATABASE_URL` | PostgreSQL connection string (pre-filled for docker-compose) |
+| `GEMINI_API_KEY` | https://aistudio.google.com/apikey |
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run lint` | ESLint |
+| `npx tsc --noEmit` | Typecheck |
+| `npx prisma validate` | Schema check |
+| `npm test` | Unit tests |
+| `npm run build` | Production build |
+| `npm run qa:duplication` | Duplication check |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   ├── (app)/            # Dashboard, applications, profile
+│   ├── api/              # CV parsing endpoint, Clerk webhook
+│   └── page.tsx          # Landing page
+├── components/           # Job paste, CV upload, profile form
+└── lib/
+    ├── actions/          # Server actions
+    ├── ai/               # AI provider wrapper
+    ├── cv/               # CV text extraction & sanitizing
+    ├── job/              # Job extraction from pasted text
+    └── validations/      # Zod schemas
+```
 
-## Deploy on Vercel
+## Documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `docs/ats-tos-review.md` — ATS terms-of-service review and compliance checklists
+- `e2e-apply-build-plan-v2.md` — build plan and phase checkpoints
