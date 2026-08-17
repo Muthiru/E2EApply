@@ -51,6 +51,9 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
+      - name: Tests
+        run: npm test
+
       - name: Duplication check
         run: npx jscpd src --config jscpd.json
 
