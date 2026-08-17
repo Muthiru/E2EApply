@@ -19,7 +19,8 @@ Commits approved changes. **Prerequisite: the `verify-before-commit` gate passed
 2. `git diff` (unstaged + cached) — re-verify nothing unintended slipped in; if new changes appeared after the gate, stop and re-run verify-before-commit.
 3. `git log --oneline -10` — match the repo's commit message style.
 4. Stage only intended files: `git add <files>` (never `git add -A` blindly — review first). Never stage `.env*` files (except `.env.example`).
-5. Commit with a concise message in the repo style (current style: `type(scope): summary`, e.g. `docs: ...`, `feat: ...`):
+5. **Always split commits into small logical units** — one concern per commit (e.g., data model / auth / feature / wrapper / docs). If the change set has distinct concerns, ask the user whether to split and how, then commit each unit separately. Never one big commit for a multi-concern change set.
+6. Commit with a concise message in the repo style (current style: `type(scope): summary`, e.g. `docs: ...`, `feat: ...`):
    - Do not add "Signed-off-by", co-authors, or extra trailers the repo doesn't use.
    - Reference the plan doc/phase if relevant (e.g., `(Phase 0)`).
 
