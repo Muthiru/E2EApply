@@ -81,7 +81,7 @@ export function DeleteApplicationButton({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start gap-3">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-status-rejected/40 text-status-rejected">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
