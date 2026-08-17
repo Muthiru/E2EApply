@@ -22,6 +22,7 @@ export default async function ApplicationDetailPage({
       job: true,
       statusEvents: { orderBy: { createdAt: "desc" } },
       documents: { orderBy: { version: "desc" } },
+      user: { include: { profile: true } },
     },
   });
 
@@ -164,6 +165,15 @@ export default async function ApplicationDetailPage({
               }
             : null
         }
+        header={{
+          fullName: application.user.profile?.fullName ?? null,
+          title: application.user.profile?.title ?? null,
+          location: application.user.profile?.location ?? null,
+          email: application.user.profile?.email ?? null,
+          phone: application.user.profile?.phone ?? null,
+          github: application.user.profile?.github ?? null,
+          linkedin: application.user.profile?.linkedin ?? null,
+        }}
       />
 
       <section className="rounded-lg border p-5">
