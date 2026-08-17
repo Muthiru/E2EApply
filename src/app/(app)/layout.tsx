@@ -1,29 +1,28 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/applications", label: "Applications" },
-  { href: "/profile", label: "Profile" },
-];
+import AppNav from "@/components/app-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-full flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <Link href="/dashboard" className="text-lg font-semibold">
-          E2E Apply
-        </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:underline">
-              {item.label}
-            </Link>
-          ))}
-          <UserButton />
-        </nav>
+      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3">
+          <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
+            E2E Apply
+          </Link>
+          <div className="flex items-center gap-4">
+            <AppNav />
+            <UserButton
+              appearance={{
+                elements: { avatarBox: "h-8 w-8" },
+              }}
+            />
+          </div>
+        </div>
       </header>
-      <main className="flex-1 px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
+        {children}
+      </main>
     </div>
   );
 }
