@@ -34,9 +34,7 @@ export default async function ProfilePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Master candidate profile</h1>
         <p className="text-muted-foreground">
-          One structured profile that powers every match score, CV, and cover
-          letter. Generated content only ever selects and rephrases what&apos;s
-          here — it never invents facts.
+          Your single source of truth for CVs, cover letters, and match scores.
         </p>
       </div>
       <ProfileForm profile={serialized} />

@@ -3,6 +3,11 @@
 import { useState, useTransition } from "react";
 import { saveProfile } from "@/lib/actions/profile";
 import type { ProfileInput } from "@/lib/validations/profile";
+import { CvUpload } from "./cv-upload";
+import type { CvParsedProfile } from "@/lib/cv/types";
+
+const cvDate = (v: string | null | undefined): Date | null =>
+  v ? new Date(`${v}T00:00:00`) : null;
 
 type ProfileWithRelations = {
   fullName: string | null;
@@ -173,9 +178,13 @@ export function ProfileForm({
         }
   );
   const [message, setMessage] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
+  const err = (path: string) => errors[path];
+
   const set = <K extends keyof ProfileInput>(key: K, value: ProfileInput[K]) => {
+    setErrors({});
     setForm((f) => ({ ...f, [key]: value }));
   };
 
@@ -184,20 +193,37 @@ export function ProfileForm({
     startTransition(async () => {
       const result = await saveProfile(form);
       if (result.ok) {
+        setErrors({});
         setMessage("Profile saved.");
       } else if ("errors" in result) {
-        setMessage("Validation failed — check the highlighted fields.");
+        setErrors(
+          Object.fromEntries(
+            Object.entries(result.errors)
+              .map(([path, messages]) => [path, messages[0] ?? ""])
+              .filter(([, text]) => text !== ""),
+          ),
+        );
+        setMessage("Validation failed — fix the highlighted fields.");
       } else {
+        setErrors({});
         setMessage(result.error);
       }
     });
   };
 
+  function sectionHas(prefix: string) {
+    return Object.keys(errors).some(
+      (key) => key === prefix || key.startsWith(`${prefix}.`),
+    );
+  }
+
   return (
     <div className="space-y-6">
+      <CvUpload onParsed={mergeParsed} />
+
       <Section title="Basics">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Full name">
+          <Field label="Full name" error={err("fullName")}>
             <Input
               value={form.fullName ?? ""}
               onChange={(v) => set("fullName", v)}
@@ -215,19 +241,19 @@ export function ProfileForm({
           <Field label="Phone">
             <Input value={form.phone ?? ""} onChange={(v) => set("phone", v)} />
           </Field>
-          <Field label="Email">
+          <Field label="Email" error={err("email")}>
             <Input value={form.email ?? ""} onChange={(v) => set("email", v)} />
           </Field>
-          <Field label="Website">
+          <Field label="Website" error={err("website")}>
             <Input
               value={form.website ?? ""}
               onChange={(v) => set("website", v)}
             />
           </Field>
-          <Field label="GitHub">
+          <Field label="GitHub" error={err("github")}>
             <Input value={form.github ?? ""} onChange={(v) => set("github", v)} />
           </Field>
-          <Field label="LinkedIn">
+          <Field label="LinkedIn" error={err("linkedin")}>
             <Input
               value={form.linkedin ?? ""}
               onChange={(v) => set("linkedin", v)}
@@ -246,13 +272,14 @@ export function ProfileForm({
         />
       </Section>
 
-      <Section title="Skills">
+      <Section title="Skills" error={sectionHas("skills")}>
         {form.skills.map((skill, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_80px_36px] gap-2">
             <Input
               value={skill.name}
               onChange={(v) => updateItem("skills", i, { name: v })}
               placeholder="Skill"
+              error={err(`skills.${i}.name`)}
             />
             <Input
               value={skill.level ?? ""}
@@ -281,17 +308,17 @@ export function ProfileForm({
         </AddButton>
       </Section>
 
-      <Section title="Work experience">
+      <Section title="Work experience" error={sectionHas("experiences")}>
         {form.experiences.map((exp, i) => (
           <div key={i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Company">
+              <Field label="Company" error={err(`experiences.${i}.company`)}>
                 <Input
                   value={exp.company}
                   onChange={(v) => updateItem("experiences", i, { company: v })}
                 />
               </Field>
-              <Field label="Title">
+              <Field label="Title" error={err(`experiences.${i}.title`)}>
                 <Input
                   value={exp.title}
                   onChange={(v) => updateItem("experiences", i, { title: v })}
@@ -375,11 +402,11 @@ export function ProfileForm({
         </AddButton>
       </Section>
 
-      <Section title="Education">
+      <Section title="Education" error={sectionHas("educations")}>
         {form.educations.map((ed, i) => (
           <div key={i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Institution">
+              <Field label="Institution" error={err(`educations.${i}.institution`)}>
                 <Input
                   value={ed.institution}
                   onChange={(v) => updateItem("educations", i, { institution: v })}
@@ -397,7 +424,7 @@ export function ProfileForm({
                   onChange={(v) => updateItem("educations", i, { field: v })}
                 />
               </Field>
-              <Field label="GPA">
+              <Field label="GPA" error={err(`educations.${i}.gpa`)}>
                 <Input
                   value={ed.gpa ?? ""}
                   onChange={(v) => updateItem("educations", i, { gpa: v })}
@@ -438,17 +465,17 @@ export function ProfileForm({
         </AddButton>
       </Section>
 
-      <Section title="Projects">
+      <Section title="Projects" error={sectionHas("projects")}>
         {form.projects.map((p, i) => (
           <div key={i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Name">
+              <Field label="Name" error={err(`projects.${i}.name`)}>
                 <Input
                   value={p.name}
                   onChange={(v) => updateItem("projects", i, { name: v })}
                 />
               </Field>
-              <Field label="URL">
+              <Field label="URL" error={err(`projects.${i}.url`)}>
                 <Input
                   value={p.url ?? ""}
                   onChange={(v) => updateItem("projects", i, { url: v })}
@@ -496,13 +523,14 @@ export function ProfileForm({
         </AddButton>
       </Section>
 
-      <Section title="Certifications">
+      <Section title="Certifications" error={sectionHas("certifications")}>
         {form.certifications.map((c, i) => (
           <div key={i} className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2">
             <Input
               value={c.name}
               onChange={(v) => updateItem("certifications", i, { name: v })}
               placeholder="Name"
+              error={err(`certifications.${i}.name`)}
             />
             <Input
               value={c.issuer ?? ""}
@@ -621,11 +649,89 @@ export function ProfileForm({
     </div>
   );
 
+  function mergeParsed(parsed: CvParsedProfile) {
+    setForm((f) => {
+      const next = { ...f };
+
+      for (const key of [
+        "fullName",
+        "title",
+        "summary",
+        "location",
+        "phone",
+        "email",
+        "website",
+        "github",
+        "linkedin",
+      ] as const) {
+        const value = parsed[key];
+        if (typeof value === "string" && value.trim() !== "") {
+          next[key] = value;
+        }
+      }
+
+      if (parsed.skills?.length) {
+        next.skills = parsed.skills.map((s) => ({
+          name: s.name,
+          level: s.level ?? null,
+          years: s.years ?? null,
+        }));
+      }
+
+      if (parsed.experiences?.length) {
+        next.experiences = parsed.experiences.map((e) => ({
+          company: e.company ?? "",
+          title: e.title ?? "",
+          location: e.location ?? "",
+          startDate: cvDate(e.startDate),
+          endDate: e.current ? null : cvDate(e.endDate),
+          current: e.current ?? false,
+          description: e.description ?? "",
+          highlights: e.highlights ?? [],
+        }));
+      }
+
+      if (parsed.educations?.length) {
+        next.educations = parsed.educations.map((ed) => ({
+          institution: ed.institution ?? "",
+          degree: ed.degree ?? "",
+          field: ed.field ?? "",
+          startDate: cvDate(ed.startDate),
+          endDate: cvDate(ed.endDate),
+          gpa: ed.gpa ?? null,
+        }));
+      }
+
+      if (parsed.projects?.length) {
+        next.projects = parsed.projects.map((p) => ({
+          name: p.name ?? "",
+          description: p.description ?? "",
+          url: p.url ?? "",
+          technologies: p.technologies ?? [],
+          startDate: cvDate(p.startDate),
+          endDate: cvDate(p.endDate),
+        }));
+      }
+
+      if (parsed.certifications?.length) {
+        next.certifications = parsed.certifications.map((c) => ({
+          name: c.name ?? "",
+          issuer: c.issuer ?? "",
+          date: cvDate(c.date),
+          url: c.url ?? "",
+        }));
+      }
+
+      return next;
+    });
+  }
+
   function updateItem<K extends "skills" | "experiences" | "educations" | "projects" | "certifications">(
     key: K,
     index: number,
     patch: Partial<ProfileInput[K][number]>
   ) {
+    setErrors({});
     setForm((f) => ({
       ...f,
       [key]: f[key].map((item, i) =>
@@ -637,6 +743,7 @@ export function ProfileForm({
   function removeItem<
     K extends "skills" | "experiences" | "educations" | "projects" | "certifications"
   >(key: K, index: number) {
+    setErrors({});
     setForm((f) => ({
       ...f,
       [key]: f[key].filter((_, i) => i !== index),
@@ -647,23 +754,36 @@ export function ProfileForm({
 function Section({
   title,
   children,
+  error,
 }: {
   title: string;
   children: React.ReactNode;
+  error?: boolean;
 }) {
   return (
     <section className="space-y-3 rounded-lg border p-5">
-      <h2 className="font-semibold">{title}</h2>
+      <h2 className={error ? "font-semibold text-status-rejected" : "font-semibold"}>
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  error,
+}: {
+  label: string;
+  children: React.ReactNode;
+  error?: string;
+}) {
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {children}
+      {error && <span className="block text-xs text-status-rejected">{error}</span>}
     </label>
   );
 }
@@ -674,22 +794,30 @@ function Input({
   placeholder,
   type = "text",
   disabled,
+  error,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  error?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50"
-    />
+    <div className="space-y-1">
+      <input
+        type={type}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        aria-invalid={error ? true : undefined}
+        className={`w-full rounded-md border px-3 py-2 text-sm disabled:opacity-50 ${
+          error ? "border-status-rejected" : ""
+        }`}
+      />
+      {error && <span className="block text-xs text-status-rejected">{error}</span>}
+    </div>
   );
 }
 

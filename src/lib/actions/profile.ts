@@ -2,7 +2,11 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { profileSchema, type ProfileInput } from "@/lib/validations/profile";
+import {
+  normalizeProfileUrls,
+  profileSchema,
+  type ProfileInput,
+} from "@/lib/validations/profile";
 
 export type SaveProfileResult =
   | { ok: true }
@@ -12,9 +16,14 @@ export type SaveProfileResult =
 export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
   const { userId } = await auth.protect();
 
-  const parsed = profileSchema.safeParse(input);
+  const parsed = profileSchema.safeParse(normalizeProfileUrls(input));
   if (!parsed.success) {
-    return { ok: false, errors: parsed.error.flatten().fieldErrors };
+    const errors: Record<string, string[]> = {};
+    for (const issue of parsed.error.issues) {
+      const path = issue.path.join(".");
+      errors[path] = [...(errors[path] ?? []), issue.message];
+    }
+    return { ok: false, errors };
   }
   const data = parsed.data as ProfileInput;
 

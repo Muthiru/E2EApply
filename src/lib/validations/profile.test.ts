@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { profileSchema } from "./profile";
+import { normalizeProfileUrls, profileSchema } from "./profile";
 
 const baseProfile = {
   fullName: "",
@@ -16,6 +16,52 @@ const baseProfile = {
     minMatchPercent: null,
   },
 };
+
+describe("normalizeProfileUrls", () => {
+  it("prepends https:// to protocol-less URLs", () => {
+    const normalized = normalizeProfileUrls({
+      website: "janedoe.dev",
+      github: "github.com/janedoe",
+      linkedin: "www.linkedin.com/in/jane-doe",
+    }) as { website: string; github: string; linkedin: string };
+
+    expect(normalized.website).toBe("https://janedoe.dev");
+    expect(normalized.github).toBe("https://github.com/janedoe");
+    expect(normalized.linkedin).toBe("https://www.linkedin.com/in/jane-doe");
+  });
+
+  it("leaves full URLs and empty values untouched", () => {
+    const normalized = normalizeProfileUrls({
+      website: "https://janedoe.dev",
+      github: "",
+      linkedin: null,
+      projects: [{ name: "P", url: "http://localhost:3000" }],
+      certifications: [{ name: "C", url: "" }],
+    }) as {
+      website: string;
+      github: string;
+      linkedin: string | null;
+      projects: { url: string }[];
+      certifications: { url: string }[];
+    };
+
+    expect(normalized.website).toBe("https://janedoe.dev");
+    expect(normalized.github).toBe("");
+    expect(normalized.linkedin).toBeNull();
+    expect(normalized.projects[0].url).toBe("http://localhost:3000");
+    expect(normalized.certifications[0].url).toBe("");
+  });
+
+  it("makes the schema accept bare domains", () => {
+    const result = profileSchema.safeParse(
+      normalizeProfileUrls({
+        ...baseProfile,
+        website: "janedoe.dev",
+      }),
+    );
+    expect(result.success).toBe(true);
+  });
+});
 
 describe("profileSchema", () => {
   it("accepts a minimal empty profile", () => {

@@ -96,3 +96,30 @@ export const profileSchema = z.object({
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
+
+const withProtocol = (v: unknown): unknown =>
+  typeof v === "string" && v.trim() !== "" && !/^https?:\/\//i.test(v.trim())
+    ? `https://${v.trim()}`
+    : v;
+
+export function normalizeProfileUrls(input: unknown): unknown {
+  if (!input || typeof input !== "object") return input;
+
+  const out: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+
+  for (const key of ["website", "github", "linkedin"] as const) {
+    out[key] = withProtocol(out[key]);
+  }
+
+  for (const key of ["projects", "certifications"] as const) {
+    if (Array.isArray(out[key])) {
+      out[key] = out[key].map((item) =>
+        item && typeof item === "object"
+          ? { ...(item as Record<string, unknown>), url: withProtocol((item as Record<string, unknown>).url) }
+          : item,
+      );
+    }
+  }
+
+  return out;
+}
