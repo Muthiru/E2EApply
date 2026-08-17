@@ -1,6 +1,8 @@
 import { AiProviderError, type AiMessage, type AiCompleteOptions, type AiProvider } from "./types";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const RETRY_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 500;
 
 type GeminiResponse = {
   candidates?: {
@@ -29,9 +31,14 @@ export class GeminiProvider implements AiProvider {
       throw new AiProviderError("GEMINI_API_KEY is not set", this.name);
     }
 
-    const systemInstruction = messages
+    const systemText = messages
       .filter((m) => m.role === "system")
-      .map((m) => ({ text: m.content }));
+      .map((m) => m.content)
+      .join("\n\n");
+
+    const systemInstruction = systemText
+      ? { parts: [{ text: systemText }] }
+      : undefined;
 
     const contents = messages
       .filter((m) => m.role !== "system")
@@ -41,36 +48,25 @@ export class GeminiProvider implements AiProvider {
       }));
 
     const timeoutMs = 60_000;
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${
-        options.model ?? this.defaultModel
-      }:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": this.apiKey,
-        },
-        signal: AbortSignal.timeout(timeoutMs),
-        body: JSON.stringify({
-          contents,
-          systemInstruction,
-          generationConfig: {
-            maxOutputTokens: options.maxOutputTokens ?? 4096,
-            temperature: options.temperature ?? 0.7,
-          },
-        }),
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${
+      options.model ?? this.defaultModel
+    }:generateContent`;
+    const payload = JSON.stringify({
+      contents,
+      ...(systemInstruction ? { systemInstruction } : {}),
+      generationConfig: {
+        maxOutputTokens: options.maxOutputTokens ?? 4096,
+        temperature: options.temperature ?? 0.7,
+        ...(options.jsonMode ? { responseMimeType: "application/json" } : {}),
       },
-    );
+    });
 
-    if (!response.ok) {
-      throw new AiProviderError(
-        `Gemini API ${response.status}: ${await response.text()}`,
-        this.name,
-      );
+    const result = await this.fetchWithRetry(url, payload, timeoutMs);
+    if (result instanceof AiProviderError) {
+      throw result;
     }
 
-    const data = (await response.json()) as GeminiResponse;
+    const data = (await result.json()) as GeminiResponse;
 
     if (data.error) {
       throw new AiProviderError(data.error.message, this.name);
@@ -85,5 +81,43 @@ export class GeminiProvider implements AiProvider {
     }
 
     return text;
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    payload: string,
+    timeoutMs: number,
+  ): Promise<Response | AiProviderError> {
+    let lastError: AiProviderError | null = null;
+
+    for (let attempt = 0; attempt <= RETRY_ATTEMPTS; attempt++) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": this.apiKey,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+        body: payload,
+      });
+
+      if (response.ok) {
+        return response;
+      }
+
+      const message = `Gemini API ${response.status}: ${await response.text()}`;
+      lastError = new AiProviderError(message, this.name);
+
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === RETRY_ATTEMPTS) {
+        return lastError;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAY_MS * 2 ** attempt),
+      );
+    }
+
+    return lastError ?? new AiProviderError("Gemini request failed", this.name);
   }
 }

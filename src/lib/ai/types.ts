@@ -8,6 +8,8 @@ export type AiMessage = {
 export type AiCompleteOptions = {
   maxOutputTokens?: number;
   temperature?: number;
+  /** Request a structured JSON response from the provider. */
+  jsonMode?: boolean;
   /** Model override; defaults to the provider's configured default. */
   model?: string;
 };
