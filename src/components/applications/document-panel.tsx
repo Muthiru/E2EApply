@@ -7,6 +7,7 @@ import {
   saveFinalDocument,
 } from "@/lib/actions/job";
 import { linkHref } from "@/lib/job/documents";
+import { useToast } from "@/components/ui/toast";
 
 type DocState = {
   text: string;
@@ -132,9 +133,9 @@ export function DocumentPanel({
   header: CvHeader;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [generating, startGenerating] = useTransition();
   const [saving, startSaving] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<"CV" | "COVER_LETTER" | null>(null);
   const [cvText, setCvText] = useState(cv?.text ?? "");
   const [clText, setClText] = useState(coverLetter?.text ?? "");
@@ -145,26 +146,26 @@ export function DocumentPanel({
   }, [cv?.text, coverLetter?.text]);
 
   const handleGenerate = () => {
-    setError(null);
     startGenerating(async () => {
       const result = await generateApplicationDocuments(applicationId);
       if (result.ok) {
+        toast(cv ? "Documents regenerated." : "CV and cover letter generated.");
         router.refresh();
       } else {
-        setError(result.error);
+        toast(result.error, "error");
       }
     });
   };
 
   const handleSaveFinal = (type: "CV" | "COVER_LETTER") => {
-    setError(null);
     const content = type === "CV" ? cvText : clText;
     startSaving(async () => {
       const result = await saveFinalDocument(applicationId, type, content);
       if (result.ok) {
+        toast("Saved as final.");
         router.refresh();
       } else {
-        setError(result.error);
+        toast(result.error, "error");
       }
     });
   };
@@ -181,7 +182,7 @@ export function DocumentPanel({
         onClick={() =>
           setEditing((current) => (current === type ? null : type))
         }
-        className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
       >
         {editing === type ? "Done editing" : "Edit"}
       </button>
@@ -225,12 +226,6 @@ export function DocumentPanel({
               : "Generate CV + cover letter"}
         </button>
       </div>
-
-      {error && (
-        <p role="alert" className="mt-3 text-sm text-status-rejected">
-          {error}
-        </p>
-      )}
 
       {(cv || coverLetter) && (
         <div className="mt-4 space-y-8">

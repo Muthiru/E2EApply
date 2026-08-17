@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { statusBadgeClass, statusLabel } from "@/lib/status";
+import { matchBadgeClass, statusBadgeClass, statusDotClass, statusLabel } from "@/lib/status";
 import { isLikelyGhosted } from "@/lib/job/tracker";
 import { JobPaste } from "@/components/applications/job-paste";
 import { GhostedButton } from "@/components/applications/ghosted-button";
@@ -43,7 +43,7 @@ export default async function ApplicationsPage() {
       ) : (
         <div className="overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">Company</th>
                 <th className="px-4 py-3 font-medium">Role</th>
@@ -57,7 +57,7 @@ export default async function ApplicationsPage() {
               {applications.map((application) => (
                 <tr
                   key={application.id}
-                  className="border-b last:border-0 hover:bg-muted/50"
+                  className="border-b last:border-0"
                 >
                   <td className="px-4 py-3 font-medium">
                     {application.job.company ?? "—"}
@@ -73,13 +73,7 @@ export default async function ApplicationsPage() {
                   <td className="px-4 py-3">
                     {application.job.matchScore !== null ? (
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          application.job.matchScore >= 70
-                            ? "bg-status-offer/10 text-status-offer"
-                            : application.job.matchScore >= 50
-                              ? "bg-status-assessment/10 text-status-assessment"
-                              : "bg-status-rejected/10 text-status-rejected"
-                        }`}
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(application.job.matchScore)}`}
                       >
                         {application.job.matchScore}%
                       </span>
@@ -89,10 +83,10 @@ export default async function ApplicationsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(application.status)}`}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(application.status)}`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${statusBadgeClass(application.status).split(" ")[1]}`}
+                        className={`h-1.5 w-1.5 rounded-full ${statusDotClass(application.status)}`}
                       />
                       {statusLabel(application.status)}
                     </span>

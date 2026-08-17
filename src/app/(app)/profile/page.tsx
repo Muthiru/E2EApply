@@ -49,7 +49,7 @@ export default async function ProfilePage() {
           </div>
           <a
             href="/api/profile/cv-master"
-            className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+            className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
           >
             Download original
           </a>

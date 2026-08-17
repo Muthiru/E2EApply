@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { statusLabel } from "@/lib/status";
+import { matchBadgeClass, statusLabel } from "@/lib/status";
 import type { JobMatchDetails } from "@/lib/job/score";
 import { ScoreButton } from "@/components/applications/score-button";
 import { DocumentPanel } from "@/components/applications/document-panel";
@@ -30,7 +30,6 @@ export default async function ApplicationDetailPage({
 
   const job = application.job;
   const details = (job.matchDetails ?? null) as JobMatchDetails | null;
-  const threshold = 50;
   const latestCv = application.documents.find((d) => d.type === "CV") ?? null;
   const latestCl =
     application.documents.find((d) => d.type === "COVER_LETTER") ?? null;
@@ -50,7 +49,7 @@ export default async function ApplicationDetailPage({
         <Link
           href="/dashboard/applications"
           aria-label="Close and return to applications"
-          className="rounded-md border p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-md border p-2 text-muted-foreground hover:text-foreground"
         >
           <svg
             width="16"
@@ -77,13 +76,7 @@ export default async function ApplicationDetailPage({
           </div>
           {job.matchScore !== null ? (
             <span
-              className={`rounded-full px-3 py-1 text-lg font-semibold ${
-                job.matchScore >= 70
-                  ? "bg-status-offer/10 text-status-offer"
-                  : job.matchScore >= threshold
-                    ? "bg-status-assessment/10 text-status-assessment"
-                    : "bg-status-rejected/10 text-status-rejected"
-              }`}
+              className={`rounded-full border px-3 py-1 text-lg font-semibold ${matchBadgeClass(job.matchScore)}`}
             >
               {job.matchScore}%
             </span>
@@ -97,7 +90,7 @@ export default async function ApplicationDetailPage({
             <p className="text-sm leading-relaxed">{job.matchReasoning}</p>
 
             {details.recommendation === "skip" && (
-              <div className="rounded-md bg-status-rejected/10 p-3 text-sm text-status-rejected">
+              <div className="rounded-md border border-status-rejected/40 p-3 text-sm text-status-rejected">
                 <strong>Why you might skip this:</strong> below the fit bar and
                 the AI recommends passing on it.
               </div>
@@ -113,7 +106,7 @@ export default async function ApplicationDetailPage({
                     details.matchedSkills.map((skill) => (
                       <span
                         key={skill}
-                        className="rounded-full bg-status-offer/10 px-2.5 py-0.5 text-xs font-medium text-status-offer"
+                        className="rounded-full border border-status-offer/40 px-2.5 py-0.5 text-xs font-medium text-status-offer"
                       >
                         {skill}
                       </span>
@@ -132,7 +125,7 @@ export default async function ApplicationDetailPage({
                     details.missingSkills.map((skill) => (
                       <span
                         key={skill}
-                        className="rounded-full bg-status-rejected/10 px-2.5 py-0.5 text-xs font-medium text-status-rejected"
+                        className="rounded-full border border-status-rejected/40 px-2.5 py-0.5 text-xs font-medium text-status-rejected"
                       >
                         {skill}
                       </span>

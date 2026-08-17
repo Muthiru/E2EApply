@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteApplication } from "@/lib/actions/job";
+import { useToast } from "@/components/ui/toast";
 
 export function DeleteApplicationButton({
   applicationId,
@@ -12,19 +13,32 @@ export function DeleteApplicationButton({
   label: string;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  const close = () => setConfirming(false);
+
+  useEffect(() => {
+    if (!confirming) return;
+    cancelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirming]);
 
   const handleDelete = () => {
-    setError(null);
     startTransition(async () => {
       const result = await deleteApplication(applicationId);
       if (result.ok) {
-        setConfirming(false);
+        close();
+        toast("Application deleted.");
         router.refresh();
       } else {
-        setError(result.error);
+        toast(result.error, "error");
       }
     });
   };
@@ -36,7 +50,7 @@ export function DeleteApplicationButton({
         onClick={() => setConfirming(true)}
         aria-label={`Delete ${label}`}
         title={`Delete ${label}`}
-        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-status-rejected"
+        className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:text-status-rejected"
       >
         <svg
           viewBox="0 0 24 24"
@@ -59,28 +73,58 @@ export function DeleteApplicationButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-confirm-title"
+          aria-describedby="delete-confirm-description"
+          onClick={close}
         >
-          <div className="w-full max-w-sm rounded-lg border bg-background p-5 shadow-lg">
-            <h2
-              id="delete-confirm-title"
-              className="text-base font-semibold tracking-tight"
-            >
-              Delete application?
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Delete {label}? This can&apos;t be undone.
-            </p>
-            {error && (
-              <p role="alert" className="mt-2 text-sm text-status-rejected">
-                {error}
-              </p>
-            )}
-            <div className="mt-4 flex justify-end gap-2">
+          <div
+            className="dialog-enter w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-status-rejected/40 text-status-rejected">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <h2
+                  id="delete-confirm-title"
+                  className="text-base font-semibold tracking-tight"
+                >
+                  Delete this application?
+                </h2>
+                <p
+                  id="delete-confirm-description"
+                  className="mt-1.5 truncate text-sm text-muted-foreground"
+                  title={label}
+                >
+                  {label}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  This can&apos;t be undone.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
               <button
+                ref={cancelRef}
                 type="button"
-                onClick={() => setConfirming(false)}
+                onClick={close}
                 disabled={isPending}
-                className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+                className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 disabled:opacity-50"
               >
                 Cancel
               </button>

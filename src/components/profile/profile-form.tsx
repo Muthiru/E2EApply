@@ -305,7 +305,7 @@ export function ProfileForm(props: Readonly<{
             <button
               type="button"
               onClick={() => removeItem("skills", i)}
-              className="rounded-md border px-2 text-sm hover:bg-muted"
+              className="rounded-md border px-2 text-sm hover:border-foreground/50"
             >
               ×
             </button>
@@ -556,7 +556,7 @@ export function ProfileForm(props: Readonly<{
             <button
               type="button"
               onClick={() => removeItem("certifications", i)}
-              className="rounded-md border px-2 text-sm hover:bg-muted"
+              className="rounded-md border px-2 text-sm hover:border-foreground/50"
             >
               ×
             </button>
@@ -853,7 +853,7 @@ function AddButton(props: Readonly<{
     <button
       type="button"
       onClick={onClick}
-      className="rounded-md border border-dashed px-3 py-1.5 text-sm hover:bg-muted"
+      className="rounded-md border border-dashed px-3 py-1.5 text-sm hover:border-foreground/50"
     >
       {children}
     </button>

@@ -25,7 +25,7 @@ export default function AppNav() {
             href={item.href}
             className={
               active
-                ? "rounded-md bg-muted px-3 py-1.5 font-medium"
+                ? "rounded-md border border-foreground/20 px-3 py-1.5 font-medium"
                 : "rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
             }
           >

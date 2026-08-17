@@ -37,7 +37,7 @@ export default async function DashboardPage() {
         {profile ? (
           <Link
             href="/profile"
-            className="shrink-0 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            className="shrink-0 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/50"
           >
             Edit profile
           </Link>
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
         <div className="mt-4 flex gap-3">
           <Link
             href="/dashboard/applications"
-            className="rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            className="rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/50"
           >
             View applications
           </Link>

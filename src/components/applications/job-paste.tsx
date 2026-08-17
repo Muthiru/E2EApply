@@ -3,9 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addJobFromText, scoreApplication } from "@/lib/actions/job";
+import { useToast } from "@/components/ui/toast";
 
 export function JobPaste() {
   const router = useRouter();
+  const { toast } = useToast();
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +20,7 @@ export function JobPaste() {
       if (result.ok) {
         setText("");
         setUrl("");
+        toast("Job added to your tracker.");
         try {
           await scoreApplication(result.applicationId);
         } catch {
@@ -26,6 +29,7 @@ export function JobPaste() {
         router.push(`/dashboard/applications/${result.applicationId}`);
       } else {
         setError(result.error);
+        toast(result.error, "error");
       }
     });
   };

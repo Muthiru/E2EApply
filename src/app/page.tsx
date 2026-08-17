@@ -48,7 +48,7 @@ export default async function LandingPage() {
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-16 px-6 py-16">
         <section className="flex flex-col items-center gap-6 text-center">
-          <span className="rounded-full border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span className="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
             Your job application OS
           </span>
           <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">

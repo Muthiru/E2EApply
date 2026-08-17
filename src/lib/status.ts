@@ -24,16 +24,22 @@ export function statusDotClass(status: string): string {
 export function statusBadgeClass(status: string): string {
   switch (status) {
     case "APPLIED":
-      return "bg-status-applied/10 text-status-applied";
+      return "border-status-applied/40 text-status-applied";
     case "ASSESSMENT":
-      return "bg-status-assessment/10 text-status-assessment";
+      return "border-status-assessment/40 text-status-assessment";
     case "INTERVIEW":
-      return "bg-status-interview/10 text-status-interview";
+      return "border-status-interview/40 text-status-interview";
     case "OFFER":
-      return "bg-status-offer/10 text-status-offer";
+      return "border-status-offer/40 text-status-offer";
     case "REJECTED":
-      return "bg-status-rejected/10 text-status-rejected";
+      return "border-status-rejected/40 text-status-rejected";
     default:
-      return "bg-muted text-muted-foreground";
+      return "border-muted text-muted-foreground";
   }
+}
+
+export function matchBadgeClass(score: number): string {
+  if (score >= 70) return "border-status-offer/40 text-status-offer";
+  if (score >= 50) return "border-status-assessment/40 text-status-assessment";
+  return "border-status-rejected/40 text-status-rejected";
 }

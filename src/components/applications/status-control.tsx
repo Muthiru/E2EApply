@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateApplicationStatus } from "@/lib/actions/job";
+import { statusLabel } from "@/lib/status";
+import { useToast } from "@/components/ui/toast";
 
 const STATUSES = [
   "APPLIED",
@@ -22,13 +24,12 @@ export function StatusControl({
   current: string;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [status, setStatus] = useState<string>(current);
   const [note, setNote] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleUpdate = () => {
-    setError(null);
     startTransition(async () => {
       const result = await updateApplicationStatus(
         applicationId,
@@ -37,9 +38,10 @@ export function StatusControl({
       );
       if (result.ok) {
         setNote("");
+        toast(`Status updated to ${statusLabel(status)}.`);
         router.refresh();
       } else {
-        setError(result.error);
+        toast(result.error, "error");
       }
     });
   };
@@ -73,11 +75,6 @@ export function StatusControl({
           {isPending ? "Updating…" : "Update status"}
         </button>
       </div>
-      {error && (
-        <p role="alert" className="text-sm text-status-rejected">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
