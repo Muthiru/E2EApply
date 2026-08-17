@@ -19,8 +19,9 @@ type ProfileWithRelations = {
   website: string | null;
   github: string | null;
   linkedin: string | null;
-  skills: { name: string; level: string | null; years: number | null }[];
+  skills: { id: string; name: string; level: string | null; years: number | null }[];
   experiences: {
+    id: string;
     company: string;
     title: string;
     location: string | null;
@@ -31,6 +32,7 @@ type ProfileWithRelations = {
     highlights: string[];
   }[];
   educations: {
+    id: string;
     institution: string;
     degree: string | null;
     field: string | null;
@@ -39,6 +41,7 @@ type ProfileWithRelations = {
     gpa: string | null;
   }[];
   projects: {
+    id: string;
     name: string;
     description: string | null;
     url: string | null;
@@ -47,6 +50,7 @@ type ProfileWithRelations = {
     endDate: Date | null;
   }[];
   certifications: {
+    id: string;
     name: string;
     issuer: string | null;
     date: Date | null;
@@ -83,11 +87,10 @@ const splitList = (v: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-export function ProfileForm({
-  profile,
-}: {
+export function ProfileForm(props: Readonly<{
   profile: ProfileWithRelations | null;
-}) {
+}>) {
+  const { profile } = props;
   const [form, setForm] = useState<ProfileInput>(() =>
     profile
       ? {
@@ -101,11 +104,13 @@ export function ProfileForm({
           github: profile.github,
           linkedin: profile.linkedin,
           skills: profile.skills.map((s) => ({
+            id: s.id,
             name: s.name,
             level: s.level,
             years: s.years,
           })),
           experiences: profile.experiences.map((e) => ({
+            id: e.id,
             company: e.company,
             title: e.title,
             location: e.location,
@@ -116,6 +121,7 @@ export function ProfileForm({
             highlights: e.highlights,
           })),
           educations: profile.educations.map((ed) => ({
+            id: ed.id,
             institution: ed.institution,
             degree: ed.degree,
             field: ed.field,
@@ -124,6 +130,7 @@ export function ProfileForm({
             gpa: ed.gpa ?? null,
           })),
           projects: profile.projects.map((p) => ({
+            id: p.id,
             name: p.name,
             description: p.description,
             url: p.url,
@@ -132,6 +139,7 @@ export function ProfileForm({
             endDate: p.endDate,
           })),
           certifications: profile.certifications.map((c) => ({
+            id: c.id,
             name: c.name,
             issuer: c.issuer,
             date: c.date,
@@ -274,7 +282,7 @@ export function ProfileForm({
 
       <Section title="Skills" error={sectionHas("skills")}>
         {form.skills.map((skill, i) => (
-          <div key={i} className="grid grid-cols-[1fr_1fr_80px_36px] gap-2">
+          <div key={skill.id ?? i} className="grid grid-cols-[1fr_1fr_80px_36px] gap-2">
             <Input
               value={skill.name}
               onChange={(v) => updateItem("skills", i, { name: v })}
@@ -303,14 +311,14 @@ export function ProfileForm({
             </button>
           </div>
         ))}
-        <AddButton onClick={() => set("skills", [...form.skills, { name: "" }])}>
+        <AddButton onClick={() => set("skills", [...form.skills, { id: crypto.randomUUID(), name: "" }])}>
           Add skill
         </AddButton>
       </Section>
 
       <Section title="Work experience" error={sectionHas("experiences")}>
         {form.experiences.map((exp, i) => (
-          <div key={i} className="space-y-3 rounded-md border p-4">
+          <div key={exp.id ?? i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Company" error={err(`experiences.${i}.company`)}>
                 <Input
@@ -357,7 +365,7 @@ export function ProfileForm({
                   })
                 }
               />
-              Current role
+              {" "}Current role
             </label>
             <textarea
               value={exp.description ?? ""}
@@ -386,6 +394,7 @@ export function ProfileForm({
             set("experiences", [
               ...form.experiences,
               {
+                id: crypto.randomUUID(),
                 company: "",
                 title: "",
                 location: "",
@@ -404,7 +413,7 @@ export function ProfileForm({
 
       <Section title="Education" error={sectionHas("educations")}>
         {form.educations.map((ed, i) => (
-          <div key={i} className="space-y-3 rounded-md border p-4">
+          <div key={ed.id ?? i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Institution" error={err(`educations.${i}.institution`)}>
                 <Input
@@ -451,6 +460,7 @@ export function ProfileForm({
             set("educations", [
               ...form.educations,
               {
+                id: crypto.randomUUID(),
                 institution: "",
                 degree: "",
                 field: "",
@@ -467,7 +477,7 @@ export function ProfileForm({
 
       <Section title="Projects" error={sectionHas("projects")}>
         {form.projects.map((p, i) => (
-          <div key={i} className="space-y-3 rounded-md border p-4">
+          <div key={p.id ?? i} className="space-y-3 rounded-md border p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Name" error={err(`projects.${i}.name`)}>
                 <Input
@@ -509,6 +519,7 @@ export function ProfileForm({
             set("projects", [
               ...form.projects,
               {
+                id: crypto.randomUUID(),
                 name: "",
                 description: "",
                 url: "",
@@ -525,7 +536,7 @@ export function ProfileForm({
 
       <Section title="Certifications" error={sectionHas("certifications")}>
         {form.certifications.map((c, i) => (
-          <div key={i} className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2">
+          <div key={c.id ?? i} className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2">
             <Input
               value={c.name}
               onChange={(v) => updateItem("certifications", i, { name: v })}
@@ -555,7 +566,7 @@ export function ProfileForm({
           onClick={() =>
             set("certifications", [
               ...form.certifications,
-              { name: "", issuer: "", url: "", date: null },
+              { name: "", issuer: "", url: "", date: null, id: crypto.randomUUID() },
             ])
           }
         >
@@ -623,7 +634,7 @@ export function ProfileForm({
               })
             }
           />
-          Remote only
+          {" "}Remote only
         </label>
       </Section>
 
@@ -672,6 +683,7 @@ export function ProfileForm({
 
       if (parsed.skills?.length) {
         next.skills = parsed.skills.map((s) => ({
+          id: crypto.randomUUID(),
           name: s.name,
           level: s.level ?? null,
           years: s.years ?? null,
@@ -680,6 +692,7 @@ export function ProfileForm({
 
       if (parsed.experiences?.length) {
         next.experiences = parsed.experiences.map((e) => ({
+          id: crypto.randomUUID(),
           company: e.company ?? "",
           title: e.title ?? "",
           location: e.location ?? "",
@@ -693,6 +706,7 @@ export function ProfileForm({
 
       if (parsed.educations?.length) {
         next.educations = parsed.educations.map((ed) => ({
+          id: crypto.randomUUID(),
           institution: ed.institution ?? "",
           degree: ed.degree ?? "",
           field: ed.field ?? "",
@@ -704,6 +718,7 @@ export function ProfileForm({
 
       if (parsed.projects?.length) {
         next.projects = parsed.projects.map((p) => ({
+          id: crypto.randomUUID(),
           name: p.name ?? "",
           description: p.description ?? "",
           url: p.url ?? "",
@@ -715,6 +730,7 @@ export function ProfileForm({
 
       if (parsed.certifications?.length) {
         next.certifications = parsed.certifications.map((c) => ({
+          id: crypto.randomUUID(),
           name: c.name ?? "",
           issuer: c.issuer ?? "",
           date: cvDate(c.date),
@@ -751,15 +767,12 @@ export function ProfileForm({
   }
 }
 
-function Section({
-  title,
-  children,
-  error,
-}: {
+function Section(props: Readonly<{
   title: string;
   children: React.ReactNode;
   error?: boolean;
-}) {
+}>) {
+  const { title, children, error } = props;
   return (
     <section className="space-y-3 rounded-lg border p-5">
       <h2 className={error ? "font-semibold text-status-rejected" : "font-semibold"}>
@@ -770,15 +783,12 @@ function Section({
   );
 }
 
-function Field({
-  label,
-  children,
-  error,
-}: {
+function Field(props: Readonly<{
   label: string;
   children: React.ReactNode;
   error?: string;
-}) {
+}>) {
+  const { label, children, error } = props;
   return (
     <label className="block space-y-1">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
@@ -788,21 +798,15 @@ function Field({
   );
 }
 
-function Input({
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  disabled,
-  error,
-}: {
+function Input(props: Readonly<{
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
   error?: string;
-}) {
+}>) {
+  const { value, onChange, placeholder, type = "text", disabled, error } = props;
   return (
     <div className="space-y-1">
       <input
@@ -821,15 +825,12 @@ function Input({
   );
 }
 
-function DateInput({
-  value,
-  onChange,
-  disabled,
-}: {
+function DateInput(props: Readonly<{
   value: Date | null;
   onChange: (v: Date | null) => void;
   disabled?: boolean;
-}) {
+}>) {
+  const { value, onChange, disabled } = props;
   return (
     <input
       type="date"
@@ -843,13 +844,11 @@ function DateInput({
   );
 }
 
-function AddButton({
-  onClick,
-  children,
-}: {
+function AddButton(props: Readonly<{
   onClick: () => void;
   children: React.ReactNode;
-}) {
+}>) {
+  const { onClick, children } = props;
   return (
     <button
       type="button"
@@ -861,7 +860,8 @@ function AddButton({
   );
 }
 
-function RemoveButton({ onClick }: { onClick: () => void }) {
+function RemoveButton(props: Readonly<{ onClick: () => void }>) {
+  const { onClick } = props;
   return (
     <button
       type="button"

@@ -10,10 +10,18 @@ export function extractJson(raw: string): unknown {
     // fall through to lenient extraction
   }
 
-  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/.exec(trimmed);
-  if (fenced) {
+  let fenced = trimmed;
+  if (fenced.startsWith("```")) {
+    const firstNewline = fenced.indexOf("\n");
+    fenced = firstNewline === -1 ? "" : fenced.slice(firstNewline + 1);
+  }
+  const closingFence = fenced.lastIndexOf("```");
+  if (closingFence !== -1) {
+    fenced = fenced.slice(0, closingFence).trimEnd();
+  }
+  if (fenced !== trimmed) {
     try {
-      return JSON.parse(fenced[1]);
+      return JSON.parse(fenced);
     } catch {
       // fall through
     }
@@ -132,31 +140,50 @@ function normalizeUrl(match: string, host: "linkedin" | "github"): string {
   return `https://${domain}/${path}`;
 }
 
+const LOCAL_PART_CHAR = /[A-Za-z0-9._%+-]/;
+const DOMAIN_CHAR = /[A-Za-z0-9.-]/;
+
+export function extractEmail(text: string): string | null {
+  const at = text.indexOf("@");
+  if (at === -1) return null;
+
+  let start = at;
+  while (start > 0 && LOCAL_PART_CHAR.test(text[start - 1])) start--;
+  if (start === at) return null;
+
+  let end = at + 1;
+  while (end < text.length && DOMAIN_CHAR.test(text[end])) end++;
+
+  const domain = text.slice(at + 1, end);
+  const labels = domain.split(".");
+  if (labels.length < 2 || labels.some((label) => label.length === 0)) {
+    return null;
+  }
+
+  return text.slice(start, end);
+}
+
 export function enrichFromText(
   profile: CvParsedProfile,
   text: string,
 ): CvParsedProfile {
   const result: CvParsedProfile = { ...profile };
 
-  const email = /[\w.+-]+@[\w-]+\.[\w.]+/.exec(text)?.[0];
+  const email = extractEmail(text);
   if (!result.email && email) result.email = email;
 
-  const linkedin =
-    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w-]+/i.exec(text)?.[0];
+  const linkedin = /linkedin\.com\/in\/[\w-]+/i.exec(text)?.[0];
   if (!result.linkedin && linkedin) {
     result.linkedin = normalizeUrl(linkedin, "linkedin");
   }
 
-  const github =
-    /(?:https?:\/\/)?(?:www\.)?github\.com\/[\w-]+/i.exec(text)?.[0];
+  const github = /github\.com\/[\w-]+/i.exec(text)?.[0];
   if (!result.github && github) {
     result.github = normalizeUrl(github, "github");
   }
 
   if (!result.website) {
-    const generic = /https?:\/\/[^\s"'<>]+/g
-      .exec(text)?.[0]
-      ?.replace(/[),.]+$/, "");
+    const generic = /https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&'*+;=%-]+/.exec(text)?.[0];
     if (generic && !/linkedin\.com|github\.com/i.test(generic)) {
       result.website = generic;
     }

@@ -88,7 +88,7 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
 
     await tx.education.createMany({
       data: data.educations.map((ed) => {
-        const gpa = ed.gpa ? parseFloat(ed.gpa) : null;
+        const gpa = ed.gpa ? Number.parseFloat(ed.gpa) : null;
         return {
           profileId: profile.id,
           institution: ed.institution,

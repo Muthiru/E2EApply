@@ -45,7 +45,7 @@ const educationSchema = z.object({
   gpa: z
     .union([z.string(), z.null(), z.undefined()])
     .refine(
-      (v) => v === undefined || v === null || v === "" || !Number.isNaN(parseFloat(v)),
+      (v) => v === undefined || v === null || v === "" || !Number.isNaN(Number.parseFloat(v)),
       "GPA must be a number"
     )
     .nullable(),
@@ -55,7 +55,7 @@ const projectSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(1, "Project name is required"),
   description: z.string().trim().optional().nullable(),
-  url: z.string().trim().url().optional().nullable(),
+  url: z.url().trim().optional().nullable(),
   technologies: z.array(z.string().trim()).optional(),
   startDate: optionalDate,
   endDate: optionalDate,
@@ -66,7 +66,7 @@ const certificationSchema = z.object({
   name: z.string().trim().min(1, "Certification name is required"),
   issuer: z.string().trim().optional().nullable(),
   date: optionalDate,
-  url: z.string().trim().url().optional().nullable(),
+  url: z.url().trim().optional().nullable(),
 });
 
 const preferencesSchema = z.object({
@@ -83,10 +83,10 @@ export const profileSchema = z.object({
   summary: z.string().trim().optional().nullable(),
   location: z.string().trim().optional().nullable(),
   phone: z.string().trim().optional().nullable(),
-  email: z.string().trim().email().optional().nullable().or(z.literal("")),
-  website: z.string().trim().url().optional().nullable().or(z.literal("")),
-  github: z.string().trim().url().optional().nullable().or(z.literal("")),
-  linkedin: z.string().trim().url().optional().nullable().or(z.literal("")),
+  email: z.email().trim().optional().nullable().or(z.literal("")),
+  website: z.url().trim().optional().nullable().or(z.literal("")),
+  github: z.url().trim().optional().nullable().or(z.literal("")),
+  linkedin: z.url().trim().optional().nullable().or(z.literal("")),
   skills: z.array(skillSchema),
   experiences: z.array(experienceSchema),
   educations: z.array(educationSchema),
