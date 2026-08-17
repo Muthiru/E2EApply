@@ -50,6 +50,7 @@ export type CvParsedProfile = {
   website?: string | null;
   github?: string | null;
   linkedin?: string | null;
+  sectionOrder?: string[];
   skills?: CvSkill[];
   experiences?: CvExperience[];
   educations?: CvEducation[];

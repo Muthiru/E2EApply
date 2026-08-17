@@ -4,10 +4,13 @@ export const CV_SCHEMA_DESCRIPTION = `Respond with a single string containing a 
 Plain paragraphs under Summary and Education. No other markdown, no headings deeper than level 2, no tables.`;
 
 export const CV_RULES = `Rules:
+- This CV is a TAILORED VERSION of the candidate's existing CV — improve it, do not redesign it.
 - Use ONLY facts from the candidate profile. NEVER invent companies, titles, dates, skills, degrees, or results.
-- The target posting is provided — rephrase profile facts to match its language and requirements where the profile genuinely supports it (ATS keyword alignment). Surface the posting's most important keywords in the Summary's first line if the candidate has them.
+- PRESERVE the original CV's structure: keep the exact section headings and their order (given in the prompt as "CV section order"). Do not add or remove sections.
+- Keep the candidate's contact header style: same lines (name, title, location, phone, email, LinkedIn, GitHub, website) in the same order as the profile lists them.
+- Rephrase profile facts to match the posting's language where the profile genuinely supports it (ATS keyword alignment). Surface the posting's most important keywords in the Summary's first line if the candidate has them.
 - Rewrite experience/project bullets to start with strong action verbs, 2-4 bullets per role, each factual and specific.
-- Order Skills by relevance to the posting (posting-relevant first).
+- Order Skills by relevance to the posting (posting-relevant first) — but keep them in the same section.
 - Keep it to one page. Plain text only — no placeholders, no bracketed text.`;
 
 export const COVER_LETTER_SCHEMA_DESCRIPTION = `Respond with a single plain-text business letter, ready to paste or print, with exactly this structure (one blank line between each block):
@@ -124,4 +127,18 @@ export function sanitizeCoverLetterFromAi(input: unknown): string | null {
   const trimmed = text.trim();
   if (trimmed.length < 60) return null;
   return trimmed.slice(0, 4_000);
+}
+
+export function linkHref(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
+  if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(trimmed)) {
+    return `mailto:${trimmed}`;
+  }
+  if (/^[A-Za-z0-9-]+\.(com|org|net|io|dev|me)\//i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return null;
 }

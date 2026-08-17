@@ -1,4 +1,5 @@
-import { Document, Page, StyleSheet, Text } from "@react-pdf/renderer";
+import { Document, Link, Page, StyleSheet, Text } from "@react-pdf/renderer";
+import { linkHref } from "@/lib/job/documents";
 
 const styles = StyleSheet.create({
   page: {
@@ -17,6 +18,12 @@ const styles = StyleSheet.create({
     color: "#4b5563",
     marginTop: 4,
   },
+  contactLink: {
+    fontSize: 9,
+    color: "#2563eb",
+    marginTop: 4,
+    textDecoration: "underline",
+  },
   heading: {
     fontSize: 12,
     fontWeight: "bold",
@@ -32,6 +39,10 @@ const styles = StyleSheet.create({
   paragraph: {
     marginBottom: 4,
   },
+  bodyLink: {
+    color: "#2563eb",
+    textDecoration: "underline",
+  },
 });
 
 type CvHeader = {
@@ -46,21 +57,27 @@ type CvHeader = {
 
 export function CvDocument({ text, header }: { text: string; header: CvHeader }) {
   const contactParts = [
-    header.title,
-    header.location,
-    header.email,
-    header.phone,
-    header.github,
-    header.linkedin,
-  ].filter((part): part is string => Boolean(part));
+    { value: header.title, href: null },
+    { value: header.location, href: null },
+    { value: header.email, href: header.email ? `mailto:${header.email}` : null },
+    { value: header.phone, href: null },
+    { value: header.github, href: header.github ? linkHref(header.github) : null },
+    { value: header.linkedin, href: header.linkedin ? linkHref(header.linkedin) : null },
+  ].filter((part): part is { value: string; href: string | null } => Boolean(part.value));
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {header.fullName && <Text style={styles.name}>{header.fullName}</Text>}
-        {contactParts.length > 0 && (
-          <Text style={styles.contact}>{contactParts.join("  ·  ")}</Text>
-        )}
+        {contactParts.map((part, i) => (
+          <Text key={i} style={part.href ? styles.contactLink : styles.contact}>
+            {part.href ? (
+              <Link src={part.href}>{part.value}</Link>
+            ) : (
+              part.value
+            )}
+          </Text>
+        ))}
         {text.split(/\r?\n/).map((line, i) => {
           const trimmed = line.trim();
           if (!trimmed) return null;
@@ -72,16 +89,27 @@ export function CvDocument({ text, header }: { text: string; header: CvHeader })
               </Text>
             );
           }
+          const href = linkHref(trimmed);
+          const textNode = trimmed.startsWith("- ")
+            ? trimmed.slice(2)
+            : trimmed;
+          if (href) {
+            return (
+              <Text key={i} style={[styles.paragraph, styles.bodyLink]}>
+                <Link src={href}>{textNode}</Link>
+              </Text>
+            );
+          }
           if (trimmed.startsWith("- ")) {
             return (
               <Text key={i} style={[styles.paragraph, styles.bullet]}>
-                {trimmed.slice(2)}
+                {textNode}
               </Text>
             );
           }
           return (
             <Text key={i} style={styles.paragraph}>
-              {trimmed}
+              {textNode}
             </Text>
           );
         })}

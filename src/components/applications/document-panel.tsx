@@ -6,6 +6,7 @@ import {
   generateApplicationDocuments,
   saveFinalDocument,
 } from "@/lib/actions/job";
+import { linkHref } from "@/lib/job/documents";
 
 type DocState = {
   text: string;
@@ -25,13 +26,13 @@ export type CvHeader = {
 
 function CvPreview({ text, header }: { text: string; header: CvHeader }) {
   const contactParts = [
-    header.title,
-    header.location,
-    header.email,
-    header.phone,
-    header.github,
-    header.linkedin,
-  ].filter((part): part is string => Boolean(part));
+    { value: header.title, href: null },
+    { value: header.location, href: null },
+    { value: header.email, href: header.email ? `mailto:${header.email}` : null },
+    { value: header.phone, href: null },
+    { value: header.github, href: header.github ? linkHref(header.github) : null },
+    { value: header.linkedin, href: header.linkedin ? linkHref(header.linkedin) : null },
+  ].filter((part): part is { value: string; href: string | null } => Boolean(part.value));
 
   return (
     <div className="rounded-md border bg-background p-6">
@@ -39,9 +40,17 @@ function CvPreview({ text, header }: { text: string; header: CvHeader }) {
         <p className="text-xl font-bold tracking-tight">{header.fullName}</p>
       )}
       {contactParts.length > 0 && (
-        <p className="mt-1 text-xs text-muted-foreground">
-          {contactParts.join("  ·  ")}
-        </p>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+          {contactParts.map((part, i) =>
+            part.href ? (
+              <a key={i} href={part.href} className="text-status-assessment underline underline-offset-2 hover:text-foreground">
+                {part.value}
+              </a>
+            ) : (
+              <span key={i}>{part.value}</span>
+            ),
+          )}
+        </div>
       )}
       <div className="mt-4 space-y-2.5">
         {text.split(/\r?\n/).map((line, i) => {
@@ -58,17 +67,33 @@ function CvPreview({ text, header }: { text: string; header: CvHeader }) {
               </p>
             );
           }
+          const href = linkHref(trimmed);
+          const content = trimmed.startsWith("- ") ? trimmed.slice(2) : trimmed;
+          if (href) {
+            return (
+              <p key={i} className="text-sm leading-relaxed">
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-status-assessment underline underline-offset-2 hover:text-foreground"
+                >
+                  {content}
+                </a>
+              </p>
+            );
+          }
           if (trimmed.startsWith("- ")) {
             return (
               <p key={i} className="flex gap-2 text-sm leading-relaxed">
                 <span aria-hidden="true">•</span>
-                <span>{trimmed.slice(2)}</span>
+                <span>{content}</span>
               </p>
             );
           }
           return (
             <p key={i} className="text-sm leading-relaxed">
-              {trimmed}
+              {content}
             </p>
           );
         })}

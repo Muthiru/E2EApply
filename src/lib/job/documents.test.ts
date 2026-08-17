@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  linkHref,
   sanitizeCoverLetterFromAi,
   sanitizeCvFromAi,
   splitCvSections,
@@ -97,5 +98,26 @@ describe("splitCvSections", () => {
     );
     expect(sections.summary).toEqual(["first"]);
     expect(sections.skills).toEqual(["- SQL"]);
+  });
+});
+describe("linkHref", () => {
+  it("keeps http(s) URLs", () => {
+    expect(linkHref("https://github.com/janedoe")).toBe("https://github.com/janedoe");
+    expect(linkHref("http://example.com")).toBe("http://example.com");
+  });
+
+  it("prepends https:// to bare domains", () => {
+    expect(linkHref("github.com/janedoe")).toBe("https://github.com/janedoe");
+    expect(linkHref("www.linkedin.com/in/jane")).toBe("https://www.linkedin.com/in/jane");
+  });
+
+  it("turns emails into mailto links", () => {
+    expect(linkHref("janedoe@gmail.com")).toBe("mailto:janedoe@gmail.com");
+  });
+
+  it("returns null for non-link lines", () => {
+    expect(linkHref("- Provided 2nd level support")).toBeNull();
+    expect(linkHref("BSc in Information Technology")).toBeNull();
+    expect(linkHref("")).toBeNull();
   });
 });

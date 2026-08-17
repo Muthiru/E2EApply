@@ -58,6 +58,9 @@ model Profile {
   website        String?
   github         String?
   linkedin       String?
+  masterCvName   String?
+  masterCvData   Bytes?
+  cvSectionOrder String[]
   skills         Skill[]
   experiences    WorkExperience[]
   educations     Education[]

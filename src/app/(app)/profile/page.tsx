@@ -37,6 +37,25 @@ export default async function ProfilePage() {
           Your single source of truth for CVs, cover letters, and match scores.
         </p>
       </div>
+
+      {profile?.masterCvName && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border p-4">
+          <div>
+            <p className="text-sm font-medium">Master CV on file</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {profile.masterCvName} — every generated CV keeps this
+              document&apos;s structure, order, and links.
+            </p>
+          </div>
+          <a
+            href="/api/profile/cv-master"
+            className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          >
+            Download original
+          </a>
+        </div>
+      )}
+
       <ProfileForm profile={serialized} />
     </div>
   );

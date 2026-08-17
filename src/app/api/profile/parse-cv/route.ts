@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
 import { getAiProvider } from "@/lib/ai";
 import { detectCvType, extractCvText } from "@/lib/cv/extract";
 import { sanitizeParsedProfile, extractJson, enrichFromText } from "@/lib/cv/sanitize";
@@ -20,6 +21,7 @@ const SCHEMA_DESCRIPTION = `Respond with a single JSON object using ONLY these f
   "website": string | null,
   "github": string | null,
   "linkedin": string | null,
+  "sectionOrder": string[],
   "skills": [{ "name": string, "level": string | null, "years": number | null }],
   "experiences": [{
     "company": string, "title": string, "location": string | null,
@@ -45,10 +47,11 @@ const RULES = `Rules:
 - experiences/projects/certifications: omit the item entirely if its name/company is missing.
 - Sections absent from the CV become empty arrays. Keep every field key present in the object.
 - Include LinkedIn, GitHub, and personal website URLs verbatim when present.
+- sectionOrder: the CV's major section headings in the order they appear in the document (e.g. ["Summary", "Skills", "Experience", "Education"]). Use the document's own heading names.
 - Output valid JSON only — no markdown, no commentary.`;
 
 export async function POST(request: Request) {
-  await auth.protect();
+  const { userId } = await auth.protect();
 
   const formData = await request.formData();
   const file = formData.get("file");
@@ -112,6 +115,24 @@ export async function POST(request: Request) {
   }
 
   const profile = enrichFromText(sanitizeParsedProfile(parsed), text);
+
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { id: true },
+  });
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, error: "User not found." },
+      { status: 401 },
+    );
+  }
+
+  const masterCvData = Buffer.from(await file.arrayBuffer());
+  await prisma.profile.upsert({
+    where: { userId: user.id },
+    update: { masterCvName: file.name, masterCvData },
+    create: { userId: user.id, masterCvName: file.name, masterCvData },
+  });
 
   return NextResponse.json({ ok: true, profile });
 }

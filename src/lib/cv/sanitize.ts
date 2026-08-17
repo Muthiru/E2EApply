@@ -205,6 +205,12 @@ export function sanitizeParsedProfile(input: unknown): CvParsedProfile {
     website: str(input.website),
     github: str(input.github),
     linkedin: str(input.linkedin),
+    sectionOrder: Array.isArray(input.sectionOrder)
+      ? input.sectionOrder
+          .map((s) => str(s))
+          .filter((s): s is string => s !== null)
+          .slice(0, 10)
+      : [],
     skills: Array.isArray(input.skills)
       ? input.skills
           .map(skill)
