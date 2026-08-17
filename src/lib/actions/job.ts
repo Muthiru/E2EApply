@@ -410,3 +410,35 @@ export async function updateApplicationStatus(
 
   return { ok: true };
 }
+export type DeleteApplicationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function deleteApplication(
+  applicationId: string,
+): Promise<DeleteApplicationResult> {
+  const { userId } = await auth.protect();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const application = await tx.application.findFirst({
+      where: { id: applicationId, user: { clerkId: userId } },
+      select: { jobId: true },
+    });
+    if (!application) return "not-found" as const;
+
+    await tx.application.delete({ where: { id: applicationId } });
+
+    const remaining = await tx.application.count({
+      where: { jobId: application.jobId },
+    });
+    if (remaining === 0) {
+      await tx.job.delete({ where: { id: application.jobId } });
+    }
+    return "ok" as const;
+  });
+
+  if (result === "not-found") {
+    return { ok: false, error: "Application not found." };
+  }
+  return { ok: true };
+}

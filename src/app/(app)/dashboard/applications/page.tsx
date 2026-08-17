@@ -5,6 +5,7 @@ import { statusBadgeClass, statusLabel } from "@/lib/status";
 import { isLikelyGhosted } from "@/lib/job/tracker";
 import { JobPaste } from "@/components/applications/job-paste";
 import { GhostedButton } from "@/components/applications/ghosted-button";
+import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
 
 export default async function ApplicationsPage() {
   const { userId } = await auth.protect();
@@ -101,11 +102,17 @@ export default async function ApplicationsPage() {
                       "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {isLikelyGhosted(
-                      application.status,
-                      application.statusEvents[0]?.createdAt ?? null,
-                      now,
-                    ) && <GhostedButton applicationId={application.id} />}
+                    <div className="flex items-center justify-end gap-1">
+                      {isLikelyGhosted(
+                        application.status,
+                        application.statusEvents[0]?.createdAt ?? null,
+                        now,
+                      ) && <GhostedButton applicationId={application.id} />}
+                      <DeleteApplicationButton
+                        applicationId={application.id}
+                        label={`${application.job.company ?? application.job.title} — ${application.job.title}`}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
