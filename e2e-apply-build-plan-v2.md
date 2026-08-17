@@ -31,7 +31,7 @@
 | DB | PostgreSQL | Relational data (jobs, applications, statuses) fits better than Mongo/Maria here |
 | ORM | Prisma | Fast iteration, good TS support |
 | Auth | Clerk or Supabase Auth | Don't build auth yourself |
-| AI | Provider-agnostic wrapper (start with Anthropic API) | Swap models without rewrites |
+| AI | Provider-agnostic wrapper (start with Gemini) | Swap models without rewrites (decided 2026-08-17: Gemini first) |
 | File storage | S3 / Cloudflare R2 | CV/cover letter PDFs |
 | Hosting | Vercel (frontend+API) + Railway/Render (workers, later) | Cheap to start |
 
