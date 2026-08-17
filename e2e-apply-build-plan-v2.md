@@ -60,30 +60,35 @@ Document (generated CV/cover letter files, versioned)
 **Goal:** Paste one job → get analysis, tailored CV, cover letter, manual tracker entry. Usable on your own job search immediately.
 
 ### 1.1 Job ingestion
-- [ ] Input: paste a job URL or raw job description text (start with **paste text**, not scraping)
-- [ ] AI call: extract structured `Job` object from raw text
-- [ ] Store normalized job in DB
+- [x] Input: paste a job URL or raw job description text (start with **paste text**, not scraping) — **built: `JobPaste` component, text + optional URL**
+- [x] AI call: extract structured `Job` object from raw text — **built: `src/lib/job/extract.ts` (jsonMode, temp 0.1, dup detection by company+title)**
+- [x] Store normalized job in DB — **built: `addJobFromText` creates `Job` + `Application` (PENDING); verified with a real DSV posting**
 
 ### 1.2 Match scoring
-- [ ] AI call: compare `Job.requirements/skills` against `Profile`
-- [ ] Output: match %, matched skills, missing skills, plain-language reasoning
-- [ ] **"Don't apply" logic**: if match < threshold or hard blockers exist → show "Why you might skip this" instead of hiding it
+- [x] AI call: compare `Job.requirements/skills` against `Profile` — **built: `scoreApplication` (auto-runs after paste), `src/lib/job/score.ts`**
+- [x] Output: match %, matched skills, missing skills, plain-language reasoning — **built: match badge + reasoning + skill chips on application detail; Match column on list**
+- [x] **"Don't apply" logic**: if match < threshold or hard blockers exist → show "Why you might skip this" instead of hiding it — **built: skip recommendation + red callout; recommendation coerced from score**
 
 ### 1.3 Document generation
-- [ ] AI call: generate tailored CV content (select/rephrase only from Profile, never invent)
-- [ ] AI call: generate cover letter draft
-- [ ] Render to PDF (simple template first)
-- [ ] Human review/edit step before "final"
+- [x] AI call: generate tailored CV content (select/rephrase only from Profile, never invent) — **built: `generateApplicationDocuments` (CV + cover letter in parallel), rules enforce facts-only**
+- [x] AI call: generate cover letter draft — **built: same action, cover letter < 250 words, facts-only**
+- [x] Render to PDF (simple template first) — **built: `@react-pdf/renderer`, `/cv.pdf` + `/cover-letter.pdf` routes (owner-checked), A4 simple template**
+- [x] Human review/edit step before "final" — **built: editable textareas + "Save as final" versioning (isFinal gate; only final renders in PDF)**
 
 ### 1.4 Manual tracker
-- [ ] Application list: company, role, match %, status
-- [ ] Manual status updates + timestamped history
-- [ ] Manual "mark as likely ghosted" after N days
+- [x] Application list: company, role, match %, status — **built: applications table + Match column + row links**
+- [x] Manual status updates + timestamped history — **built: `updateApplicationStatus` (manual StatusEvent, from/to, note) + status control on detail page**
+- [x] Manual "mark as likely ghosted" after N days — **built: `isLikelyGhosted` (14-day threshold) + "Mark as ghosted" on stale rows; `tracker.test.ts`**
 
 ### MVP1 exit criteria (be honest with yourself here)
 - [ ] You've used it for at least 10 real applications of your own
 - [ ] The match score has changed your mind about applying to at least one job (either direction) — if it never once told you something you didn't already know by reading the posting, the scoring isn't adding value yet
 - [ ] The generated CV/cover letter needed only light edits, not a rewrite, on most applications
+
+### Phase 1 actual results (qa-verify, recorded 2026-08-17)
+- Gate green at completion: 44 tests (6 files), tsc 0, lint 0, jscpd 0 clones, production build OK.
+- Verified end-to-end on a real DSV posting (2nd Level Support Specialist): extraction → PENDING application → auto match score → tailored CV + cover letter → manual status flow.
+- Known constraints: ATS keyword alignment is prompt-level only (no term-frequency analysis yet); PDF is a simple text template; ghosted threshold fixed at 14 days.
 
 **Checkpoint 1 → 2 (kill/pivot point):**
 - ✅ **Proceed** if match scoring and document generation are genuinely saving you time/adding insight, and at least 1–2 other people (friends, forum, subreddit) have tried it and want to keep using it.
