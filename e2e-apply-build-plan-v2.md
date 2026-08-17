@@ -138,12 +138,12 @@ False positives ("we received your application" ≠ interview invite). Build the
 
 ---
 
-## Phase 4 — Controlled auto-apply (Effort: M)
+## Phase 4 — Rules-driven assisted apply (Effort: M)
 
-**Goal:** Only after Phase 3 is trusted and validated for weeks on real applications.
+**Goal:** Only after Phase 3 is trusted and validated for weeks on real applications. Per the Checkpoint 0 compliance decision (recorded 2026-08-17, `docs/ats-tos-review.md`), **unattended auto-submit is off the table** — Phase 4 builds rules + transparency around the human-in-the-loop flow, and any unattended submission requires the Phase 4 gate in `docs/ats-tos-review.md` (sanctioned API path or legal sign-off) before it is even considered.
 
 - [ ] Rules config UI: allowed roles, min match %, salary floor, locations, max applications/day
-- [ ] Auto-apply only within configured rules, only on ATS platforms already validated in Phase 3
+- [ ] Queue/pre-fill only within configured rules, only on ATS platforms already validated in Phase 3; a human still reviews and clicks the final Submit
 - [ ] Daily digest email with full transparency + undo/flag window where feasible
 
 ---

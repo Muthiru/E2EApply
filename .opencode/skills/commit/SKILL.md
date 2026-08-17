@@ -16,7 +16,7 @@ Commits approved changes. **Prerequisite: the `verify-before-commit` gate passed
 ## Process
 
 1. `git status` — confirm exactly what's changed since the gate ran.
-2. `git diff` (unstaged + cached) — re-verify nothing unintended slipped in; if new changes appeared after the gate, stop and re-run verify-before-commit.
+2. `git diff HEAD` — re-verify nothing unintended slipped in (covers both staged and unstaged); if new changes appeared after the gate, stop and re-run verify-before-commit.
 3. `git log --oneline -10` — match the repo's commit message style.
 4. Stage only intended files: `git add <files>` (never `git add -A` blindly — review first). Never stage `.env*` files (except `.env.example`).
 5. **Always split commits into small logical units** — one concern per commit (e.g., data model / auth / feature / wrapper / docs). If the change set has distinct concerns, ask the user whether to split and how, then commit each unit separately. Never one big commit for a multi-concern change set.

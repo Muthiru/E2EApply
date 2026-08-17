@@ -19,7 +19,7 @@ Read-only skill. **Never edit files, never run git commit, never write code.** Y
 2. **Check project context** — `docs/ats-tos-review.md` Quick Reference + checklists (this is a living compliance doc; product decisions depend on it), `README.md`, `AGENTS.md`.
 3. **Verify actual state** — read the code that should implement the plan items. Confirm with evidence:
    - Do the files exist? Are the models/fields/routes actually implemented, or stubs?
-   - Run read-only checks: `npm run lint`, `npx tsc --noEmit`, `npx prisma validate` (these do not modify files).
+   - Run read-only checks: `npm run lint`, `npx tsc --noEmit --incremental false`, `npx prisma validate` (these do not modify files; the `--incremental false` flag prevents `tsc` from writing `tsbuildinfo`, keeping this skill strictly read-only).
    - If the plan doc has checkboxes, only report them as done if the code proves it.
 4. **Report** — give a concise status: phase, what's done (with file paths + line references), what's missing, what's risky. Do not fix anything in this skill.
 

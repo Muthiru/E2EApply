@@ -16,7 +16,7 @@ Validates that what was built actually works, and records honest checkpoint resu
 ## Process
 
 1. **Determine the target** — which phase/checkpoint or feature is being validated. Read the relevant section of `e2e-apply-build-plan-v2.md`.
-2. **Run automated checks** — the project's test script (check `package.json` for `test`/`qa` scripts; none exist yet — report that honestly). Include `npm run lint`, `npx tsc --noEmit`, `npm run build` when relevant.
+2. **Run automated checks** — the project's test script (check `package.json` for `test`/`qa` scripts; if none exists, report that as the actual current state). Include `npm run lint`, `npx tsc --noEmit`, `npm run build` when relevant.
 3. **Manual validation** — for UI flows (e.g., auth, profile builder), enumerate concrete steps and their expected outcomes, then execute them (via dev server / API calls / `curl`). Record what ACTUALLY happened.
 4. **Exit criteria review** — for each checkbox in the target phase's exit criteria, mark:
    - ✅ verified (with evidence — command output, URL, observed behavior)
