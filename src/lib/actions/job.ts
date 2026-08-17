@@ -6,7 +6,7 @@ import { getAiProvider } from "@/lib/ai";
 import { extractJson } from "@/lib/cv/sanitize";
 import { aiErrorText } from "@/lib/ai/parse";
 import { getApplicationContext } from "@/lib/job/context";
-import { fetchPageText, normalizeUrl } from "@/lib/job/fetch";
+import { fetchPageText, isLinkedInSearchUrl, normalizeUrl } from "@/lib/job/fetch";
 import type { ApplicationStatus } from "@prisma/client";
 import {
   JOB_RULES,
@@ -47,6 +47,13 @@ export async function addJobFromText(
         ok: false,
         error:
           "Paste the full job description (at least a few sentences) or provide the posting URL.",
+      };
+    }
+    if (isLinkedInSearchUrl(effectiveUrl)) {
+      return {
+        ok: false,
+        error:
+          "LinkedIn job pages need a browser (they render behind a login) — open the job and paste its description text instead.",
       };
     }
     try {
@@ -94,8 +101,9 @@ export async function addJobFromText(
     console.error("[add-job] malformed AI JSON:", raw.slice(0, 300));
     return {
       ok: false,
-      error:
-        "Couldn't read the job from the AI response. If this repeats, the description may be too short or unclear.",
+      error: effectiveUrl
+        ? "The page didn't contain a readable job posting (many sites — LinkedIn, Workday — render jobs in a browser). Open the posting and paste its description text instead."
+        : "Couldn't read the job from the pasted text. Make sure it's a complete job description.",
     };
   }
 

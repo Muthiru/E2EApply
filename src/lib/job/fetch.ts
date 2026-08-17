@@ -5,6 +5,12 @@ export function normalizeUrl(raw: string): string | null {
   return `https://${trimmed}`;
 }
 
+const LINKEDIN_JOB_PATTERN = /linkedin\.com\/jobs\//i;
+
+export function isLinkedInSearchUrl(url: string): boolean {
+  return LINKEDIN_JOB_PATTERN.test(url);
+}
+
 export function extractPageText(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")

@@ -27,7 +27,7 @@ export async function getApplicationContext(applicationId: string) {
     `Education: ${profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; ") || "none"}`,
     `Projects: ${profile.projects.map((p) => `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "none"}`,
     `Certifications: ${profile.certifications.map((c) => `${c.name}${c.issuer ? `, ${c.issuer}` : ""}`).join("; ") || "none"}`,
-    `CV section order (the candidate's original CV structure, preserve it exactly): ${profile.cvSectionOrder.length > 0 ? profile.cvSectionOrder.join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
+    `CV section order (the candidate's original CV structure, preserve it exactly): ${(profile.cvSectionOrder ?? []).length > 0 ? (profile.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
   ].join("\n");
 
   const jobText = [

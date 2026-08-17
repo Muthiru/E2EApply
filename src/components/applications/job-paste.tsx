@@ -18,7 +18,11 @@ export function JobPaste() {
       if (result.ok) {
         setText("");
         setUrl("");
-        await scoreApplication(result.applicationId);
+        try {
+          await scoreApplication(result.applicationId);
+        } catch {
+          // Job saved; scoring is retryable from the detail page.
+        }
         router.push(`/dashboard/applications/${result.applicationId}`);
       } else {
         setError(result.error);
