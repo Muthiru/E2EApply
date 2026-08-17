@@ -29,20 +29,32 @@ export class GeminiProvider implements AiProvider {
       throw new AiProviderError("GEMINI_API_KEY is not set", this.name);
     }
 
-    const contents = messages.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }));
+    const systemInstruction = messages
+      .filter((m) => m.role === "system")
+      .map((m) => ({ text: m.content }));
 
+    const contents = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+
+    const timeoutMs = 60_000;
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${
         options.model ?? this.defaultModel
-      }:generateContent?key=${encodeURIComponent(this.apiKey)}`,
+      }:generateContent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": this.apiKey,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
           contents,
+          systemInstruction,
           generationConfig: {
             maxOutputTokens: options.maxOutputTokens ?? 4096,
             temperature: options.temperature ?? 0.7,
