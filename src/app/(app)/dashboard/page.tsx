@@ -62,7 +62,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Job analysis"
           value={profile ? "Ready" : "Needs profile"}
-          detail={profile ? "Paste a job in Phase 1" : "Build profile first"}
+          detail={profile ? "Paste a job to analyze" : "Build profile first"}
         />
       </div>
 
@@ -92,7 +92,7 @@ export default async function DashboardPage() {
         <h2 className="text-base font-semibold">Next step</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {profile
-            ? "Paste your first job posting — job analysis, match score, and tailored documents arrive in Phase 1. Track everything manually in the meantime."
+            ? "Paste your first job posting — job analysis, match score, and tailored documents are on the way. Track everything manually in the meantime."
             : "Build your master candidate profile first — match scores, CVs, and cover letters are all generated from it."}
         </p>
         <div className="mt-4 flex gap-3">
