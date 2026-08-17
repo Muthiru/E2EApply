@@ -18,12 +18,11 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
   }
   const data = parsed.data as ProfileInput;
 
-  let user = await prisma.user.findUnique({ where: { clerkId: userId } });
-  if (!user) {
-    user = await prisma.user.create({
-      data: { clerkId: userId, profile: { create: {} } },
-    });
-  }
+  const user = await prisma.user.upsert({
+    where: { clerkId: userId },
+    create: { clerkId: userId, profile: { create: {} } },
+    update: {},
+  });
 
   const basics = {
     fullName: data.fullName,
@@ -37,27 +36,32 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
     linkedin: data.linkedin,
   };
 
-  await prisma.$transaction(async (tx) => {
-    const profile = await tx.profile.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, ...basics },
-      update: basics,
-    });
+  const uniqueSkills = Array.from(
+    new Map(data.skills.map((s) => [s.name.toLowerCase(), s])).values(),
+  );
 
-    await tx.skill.deleteMany({ where: { profileId: profile.id } });
-    await tx.workExperience.deleteMany({ where: { profileId: profile.id } });
-    await tx.education.deleteMany({ where: { profileId: profile.id } });
-    await tx.project.deleteMany({ where: { profileId: profile.id } });
-    await tx.certification.deleteMany({ where: { profileId: profile.id } });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const profile = await tx.profile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, ...basics },
+        update: basics,
+      });
 
-    await tx.skill.createMany({
-      data: data.skills.map((s) => ({
-        profileId: profile.id,
-        name: s.name,
-        level: s.level ?? null,
-        years: s.years ?? null,
-      })),
-    });
+      await tx.skill.deleteMany({ where: { profileId: profile.id } });
+      await tx.workExperience.deleteMany({ where: { profileId: profile.id } });
+      await tx.education.deleteMany({ where: { profileId: profile.id } });
+      await tx.project.deleteMany({ where: { profileId: profile.id } });
+      await tx.certification.deleteMany({ where: { profileId: profile.id } });
+
+      await tx.skill.createMany({
+        data: uniqueSkills.map((s) => ({
+          profileId: profile.id,
+          name: s.name,
+          level: s.level ?? null,
+          years: s.years ?? null,
+        })),
+      });
 
     await tx.workExperience.createMany({
       data: data.experiences.map((e) => ({
@@ -128,7 +132,13 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
         minMatchPercent: data.preferences.minMatchPercent ?? null,
       },
     });
-  });
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "Profile could not be saved. Please try again.",
+    };
+  }
 
   return { ok: true };
 }

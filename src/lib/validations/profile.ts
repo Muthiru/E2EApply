@@ -1,8 +1,19 @@
 import { z } from "zod";
 
 const optionalDate = z
-  .union([z.string(), z.null(), z.undefined()])
-  .transform((v) => (v ? new Date(v) : null))
+  .union([
+    z.date(),
+    z.string().refine(
+      (s) => s === "" || !Number.isNaN(new Date(s).getTime()),
+      "Invalid date",
+    ),
+    z.null(),
+    z.undefined(),
+  ])
+  .transform((v) => {
+    if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+    return v ? new Date(v) : null;
+  })
   .nullable();
 
 const skillSchema = z.object({
@@ -31,7 +42,13 @@ const educationSchema = z.object({
   field: z.string().trim().optional().nullable(),
   startDate: optionalDate,
   endDate: optionalDate,
-  gpa: z.union([z.string(), z.null(), z.undefined()]).nullable(),
+  gpa: z
+    .union([z.string(), z.null(), z.undefined()])
+    .refine(
+      (v) => v === undefined || v === null || v === "" || !Number.isNaN(parseFloat(v)),
+      "GPA must be a number"
+    )
+    .nullable(),
 });
 
 const projectSchema = z.object({
