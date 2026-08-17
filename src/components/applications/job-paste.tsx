@@ -30,8 +30,9 @@ export function JobPaste() {
     <div className="rounded-lg border p-5">
       <p className="text-sm font-medium">Track a job</p>
 <p className="mt-1 text-xs text-muted-foreground">
-          Paste the job description — the role is extracted, scored against
-          your profile, and ready for a tailored CV and cover letter.
+          Paste the job description or a posting URL — the role is extracted,
+          scored against your profile, and ready for a tailored CV and cover
+          letter.
         </p>
       <div className="mt-3 space-y-3">
         <textarea
@@ -44,7 +45,7 @@ export function JobPaste() {
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Posting URL (optional)"
+          placeholder="Posting URL (or paste the URL alone)"
           className="w-full rounded-md border px-3 py-2 text-sm"
         />
         <div className="flex items-center justify-between gap-3">
@@ -56,7 +57,7 @@ export function JobPaste() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending || text.trim().length < 80}
+            disabled={isPending || (text.trim().length < 80 && url.trim().length === 0)}
             className="ml-auto rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
           >
             {isPending ? "Analyzing & scoring…" : "Add to tracker"}

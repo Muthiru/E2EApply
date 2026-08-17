@@ -6,6 +6,7 @@ import { getAiProvider } from "@/lib/ai";
 import { extractJson } from "@/lib/cv/sanitize";
 import { aiErrorText } from "@/lib/ai/parse";
 import { getApplicationContext } from "@/lib/job/context";
+import { fetchPageText, normalizeUrl } from "@/lib/job/fetch";
 import type { ApplicationStatus } from "@prisma/client";
 import {
   JOB_RULES,
@@ -37,12 +38,29 @@ export async function addJobFromText(
 ): Promise<AddJobResult> {
   const { userId } = await auth.protect();
 
-  const text = rawText.trim();
+  let text = rawText.trim();
+  const effectiveUrl = sourceUrl ? normalizeUrl(sourceUrl) : null;
+
   if (text.length < 80) {
-    return {
-      ok: false,
-      error: "Paste the full job description (at least a few sentences).",
-    };
+    if (!effectiveUrl) {
+      return {
+        ok: false,
+        error:
+          "Paste the full job description (at least a few sentences) or provide the posting URL.",
+      };
+    }
+    try {
+      text = await fetchPageText(effectiveUrl);
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          aiErrorText(
+            error,
+            "Couldn't fetch the job from that URL — paste the description text instead.",
+          ),
+      };
+    }
   }
 
   const ai = getAiProvider();
@@ -56,7 +74,7 @@ export async function addJobFromText(
         },
         {
           role: "user",
-          content: `Job posting text:\n${text.slice(0, 40_000)}`,
+          content: `Job posting text:\n${text.slice(0, 40_000)}${effectiveUrl ? `\n\nSource URL: ${effectiveUrl}` : ""}`,
         },
       ],
       { jsonMode: true, temperature: 0.1 },
@@ -107,7 +125,7 @@ export async function addJobFromText(
           requirements: job.requirements,
           salaryMin: job.salaryMin,
           salaryMax: job.salaryMax,
-          sourceUrl: job.sourceUrl ?? sourceUrl ?? null,
+          sourceUrl: job.sourceUrl ?? effectiveUrl ?? null,
           source: "manual",
           rawText: text,
         },
