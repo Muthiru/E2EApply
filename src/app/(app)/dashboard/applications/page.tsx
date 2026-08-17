@@ -1,10 +1,15 @@
+import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { statusBadgeClass, statusLabel } from "@/lib/status";
+import { isLikelyGhosted } from "@/lib/job/tracker";
+import { JobPaste } from "@/components/applications/job-paste";
+import { GhostedButton } from "@/components/applications/ghosted-button";
 
 export default async function ApplicationsPage() {
   const { userId } = await auth.protect();
 
+  const now = new Date();
   const applications = await prisma.application.findMany({
     where: { user: { clerkId: userId } },
     include: {
@@ -20,25 +25,18 @@ export default async function ApplicationsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Applications</h1>
           <p className="mt-1 text-muted-foreground">
-            Manual tracker — status updates and history arrive with Phase 1.
+            Track every application from applied to offer — or rejection.
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="cursor-not-allowed rounded-md border px-4 py-2 text-sm font-medium opacity-50"
-          title="Job ingestion arrives in Phase 1"
-        >
-          + Track a job
-        </button>
       </div>
+
+      <JobPaste />
 
       {applications.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <p className="text-sm font-medium">No applications tracked yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Once Phase 1 lands, paste a job to start. Until then, the tracker
-            waits quietly.
+            Paste a job above to start.
           </p>
         </div>
       ) : (
@@ -48,8 +46,10 @@ export default async function ApplicationsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Company</th>
                 <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Match</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Last event</th>
+                <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -61,7 +61,31 @@ export default async function ApplicationsPage() {
                   <td className="px-4 py-3 font-medium">
                     {application.job.company ?? "—"}
                   </td>
-                  <td className="px-4 py-3">{application.job.title}</td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/dashboard/applications/${application.id}`}
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {application.job.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    {application.job.matchScore !== null ? (
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          application.job.matchScore >= 70
+                            ? "bg-status-offer/10 text-status-offer"
+                            : application.job.matchScore >= 50
+                              ? "bg-status-assessment/10 text-status-assessment"
+                              : "bg-status-rejected/10 text-status-rejected"
+                        }`}
+                      >
+                        {application.job.matchScore}%
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(application.status)}`}
@@ -75,6 +99,13 @@ export default async function ApplicationsPage() {
                   <td className="px-4 py-3 text-muted-foreground">
                     {application.statusEvents[0]?.createdAt.toLocaleDateString() ??
                       "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isLikelyGhosted(
+                      application.status,
+                      application.statusEvents[0]?.createdAt ?? null,
+                      now,
+                    ) && <GhostedButton applicationId={application.id} />}
                   </td>
                 </tr>
               ))}

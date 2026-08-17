@@ -1,0 +1,239 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { prisma } from "@/lib/prisma";
+import { statusLabel } from "@/lib/status";
+import type { JobMatchDetails } from "@/lib/job/score";
+import { ScoreButton } from "@/components/applications/score-button";
+import { DocumentPanel } from "@/components/applications/document-panel";
+import { StatusControl } from "@/components/applications/status-control";
+
+export default async function ApplicationDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { userId } = await auth.protect();
+  const { id } = await params;
+
+  const application = await prisma.application.findFirst({
+    where: { id, user: { clerkId: userId } },
+    include: {
+      job: true,
+      statusEvents: { orderBy: { createdAt: "desc" } },
+      documents: { orderBy: { version: "desc" } },
+    },
+  });
+
+  if (!application) notFound();
+
+  const job = application.job;
+  const details = (job.matchDetails ?? null) as JobMatchDetails | null;
+  const threshold = 50;
+  const latestCv = application.documents.find((d) => d.type === "CV") ?? null;
+  const latestCl =
+    application.documents.find((d) => d.type === "COVER_LETTER") ?? null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{job.title}</h1>
+          <p className="mt-1 text-muted-foreground">
+            {[job.company, job.location].filter(Boolean).join(" · ") || "Company unknown"}
+            {job.salaryMin !== null && job.salaryMax !== null
+              ? ` · $${job.salaryMin.toLocaleString()}–$${job.salaryMax.toLocaleString()}`
+              : ""}
+          </p>
+        </div>
+        <Link
+          href="/dashboard/applications"
+          aria-label="Close and return to applications"
+          className="rounded-md border p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </Link>
+      </div>
+
+      <section className="rounded-lg border p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-semibold">Match score</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              How this job fits your master profile.
+            </p>
+          </div>
+          {job.matchScore !== null ? (
+            <span
+              className={`rounded-full px-3 py-1 text-lg font-semibold ${
+                job.matchScore >= 70
+                  ? "bg-status-offer/10 text-status-offer"
+                  : job.matchScore >= threshold
+                    ? "bg-status-assessment/10 text-status-assessment"
+                    : "bg-status-rejected/10 text-status-rejected"
+              }`}
+            >
+              {job.matchScore}%
+            </span>
+          ) : (
+            <ScoreButton applicationId={application.id} />
+          )}
+        </div>
+
+        {job.matchScore !== null && details && (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm leading-relaxed">{job.matchReasoning}</p>
+
+            {details.recommendation === "skip" && (
+              <div className="rounded-md bg-status-rejected/10 p-3 text-sm text-status-rejected">
+                <strong>Why you might skip this:</strong> below the fit bar and
+                the AI recommends passing on it.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  You have
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {details.matchedSkills.length > 0 ? (
+                    details.matchedSkills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-full bg-status-offer/10 px-2.5 py-0.5 text-xs font-medium text-status-offer"
+                      >
+                        {skill}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">None listed</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Missing
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {details.missingSkills.length > 0 ? (
+                    details.missingSkills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-full bg-status-rejected/10 px-2.5 py-0.5 text-xs font-medium text-status-rejected"
+                      >
+                        {skill}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      No clear gaps
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <DocumentPanel
+        applicationId={application.id}
+        cv={
+          latestCv
+            ? { text: latestCv.content ?? "", version: latestCv.version, isFinal: latestCv.isFinal }
+            : null
+        }
+        coverLetter={
+          latestCl
+            ? {
+                text: latestCl.content ?? "",
+                version: latestCl.version,
+                isFinal: latestCl.isFinal,
+              }
+            : null
+        }
+      />
+
+      <section className="rounded-lg border p-5">
+        <h2 className="font-semibold">Job details</h2>
+        <div className="mt-3 space-y-4 text-sm">
+          {job.description && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Description
+              </p>
+              <p className="mt-1 whitespace-pre-line leading-relaxed">
+                {job.description}
+              </p>
+            </div>
+          )}
+          {job.requirements && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Requirements
+              </p>
+              <p className="mt-1 whitespace-pre-line leading-relaxed">
+                {job.requirements}
+              </p>
+            </div>
+          )}
+          {job.sourceUrl && (
+            <a
+              href={job.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm underline"
+            >
+              Original posting
+            </a>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border p-5">
+        <h2 className="font-semibold">Status history</h2>
+        <StatusControl
+          applicationId={application.id}
+          current={application.status}
+        />
+        {application.statusEvents.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No status changes yet — the tracker records them as you update it.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2 text-sm">
+            {application.statusEvents.map((event) => (
+              <li key={event.id} className="flex justify-between gap-4 border-b pb-2 last:border-0">
+                <span>
+                  {event.from
+                    ? `${statusLabel(event.from)} → ${statusLabel(event.to)}`
+                    : statusLabel(event.to)}
+                  {event.note && (
+                    <span className="block text-xs text-muted-foreground">
+                      {event.note}
+                    </span>
+                  )}
+                </span>
+                <span className="text-muted-foreground">
+                  {event.createdAt.toLocaleDateString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
