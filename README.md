@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# E2E Apply
 
-## Getting Started
+An AI-powered job application OS that takes a job from discovery to outcome — not a CV generator. The core differentiator: a tracker that closes the loop, and a "why you shouldn't apply" filter that saves time instead of just generating volume.
 
-First, run the development server:
+Compliance note: this product is **human-in-the-loop only** — automation pre-fills and validates, a human reviews and clicks the final submit. See `docs/ats-tos-review.md` for the full decision and checklists.
+
+## Stack
+
+- Next.js 16 (App Router, TypeScript) + Tailwind CSS
+- PostgreSQL 16 (local: Docker) + Prisma 7
+- Clerk (auth)
+- Gemini (AI, behind a provider-agnostic wrapper in `src/lib/ai/`)
+
+## Getting started
+
+Prerequisites: Node 20+, Docker.
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start PostgreSQL
+docker compose up -d
+
+# 3. Configure environment
+cp .env.example .env.local
+#    Fill in Clerk keys (https://dashboard.clerk.com) and GEMINI_API_KEY
+#    (https://aistudio.google.com/apikey)
+
+# 4. Apply the database schema
+npx prisma migrate dev
+
+# 5. Run the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Sign up, then build your master candidate profile at `/profile`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` — dev server
+- `npm run lint` / `npx tsc --noEmit` / `npm run build` — code quality suite
+- `npx prisma validate` / `npx prisma migrate dev` — schema checks and migrations
+- `npm test` — unit tests (vitest)
+- `npm run qa:duplication` — duplication check (jscpd, threshold 5%)
 
-## Learn More
+## Repository docs
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `e2e-apply-build-plan-v2.md` — build plan, phases, checkpoints (source of truth)
+- `docs/ats-tos-review.md` — ATS terms compliance reference + checklists (living doc)
+- `AGENTS.md` — working agreement: skill-gated workflow (read-verify → write-code → verify-before-commit → commit)

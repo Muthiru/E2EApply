@@ -9,8 +9,10 @@ export default async function ProfilePage() {
     where: { user: { clerkId: userId } },
     include: {
       skills: { orderBy: { createdAt: "asc" } },
-      experiences: { orderBy: { startDate: "desc" } },
-      educations: { orderBy: { startDate: "desc" } },
+      experiences: {
+        orderBy: { startDate: { sort: "desc", nulls: "last" } },
+      },
+      educations: { orderBy: { startDate: { sort: "desc", nulls: "last" } } },
       projects: { orderBy: { createdAt: "asc" } },
       certifications: { orderBy: { createdAt: "asc" } },
       preferences: true,
