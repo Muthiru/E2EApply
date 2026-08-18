@@ -88,7 +88,7 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
 
     await tx.education.createMany({
       data: data.educations.map((ed) => {
-        const gpa = ed.gpa ? Number.parseFloat(ed.gpa) : null;
+        const gpa = ed.gpa === "" || ed.gpa == null ? null : Number.parseFloat(ed.gpa);
         return {
           profileId: profile.id,
           institution: ed.institution,
@@ -96,7 +96,7 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
           field: ed.field ?? null,
           startDate: ed.startDate,
           endDate: ed.endDate,
-          gpa: gpa && Number.isFinite(gpa) ? gpa : null,
+          gpa: gpa !== null && Number.isFinite(gpa) ? gpa : null,
         };
       }),
     });
