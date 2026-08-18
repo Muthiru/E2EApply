@@ -23,10 +23,11 @@ export async function GET() {
       ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       : "application/octet-stream";
 
+  const safeFileName = profile.masterCvName.replace(/[\r\n"]/g, "");
   return new Response(new Uint8Array(profile.masterCvData), {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${profile.masterCvName}"`,
+      "Content-Disposition": `attachment; filename="${safeFileName}"`,
     },
   });
 }
