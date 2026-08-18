@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import AppNav from "@/components/app-nav";
+import { ensureUser } from "@/lib/user";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const { userId } = await auth.protect();
+  await ensureUser(userId);
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
