@@ -27,6 +27,45 @@ export function extractPageText(html: string): string {
     .trim();
 }
 
+export function jinaReaderUrl(rawUrl: string): string {
+  return `https://r.jina.ai/${rawUrl}`;
+}
+
+export async function fetchPageViaJinaReader(url: string): Promise<string> {
+  const response = await fetch(jinaReaderUrl(url), {
+    headers: {
+      ...(process.env.JINA_API_KEY
+        ? { authorization: `Bearer ${process.env.JINA_API_KEY}` }
+        : {}),
+      accept: "text/plain,text/markdown,text/html",
+    },
+    redirect: "follow",
+    signal: AbortSignal.timeout(25_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`The page returned HTTP ${response.status}.`);
+  }
+
+  const text = await response.text();
+  if (text.length > 2_000_000) {
+    throw new Error("The page is too large to analyze.");
+  }
+  if (text.trim().length < 80) {
+    throw new Error("Couldn't read any job text from that page.");
+  }
+
+  return text.slice(0, 40_000);
+}
+
+export async function fetchJobPageText(url: string): Promise<string> {
+  try {
+    return await fetchPageViaJinaReader(url);
+  } catch {
+    return fetchPageText(url);
+  }
+}
+
 export async function fetchPageText(url: string): Promise<string> {
   const response = await fetch(url, {
     headers: {
