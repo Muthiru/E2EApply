@@ -29,7 +29,7 @@ export async function getApplicationContext(applicationId: string) {
     `Name: ${profile.fullName ?? ""}`.trim(),
     `Title: ${profile.title ?? "not stated"}`,
     `Summary: ${profile.summary ?? "not stated"}`,
-    `Skills: ${profile.skills.map((s) => `${s.name}${s.years ? ` (${s.years}y)` : ""}`).join(", ") || "none"}`,
+    `Skills: ${profile.skills.map((s) => `${s.name}${s.years === null || s.years === undefined ? "" : ` (${s.years}y)`}`).join(", ") || "none"}`,
     `Experience: ${profile.experiences.map((e) => `${e.title} at ${e.company}${e.startDate ? `, ${e.startDate.getFullYear()}-${e.current ? "present" : (e.endDate?.getFullYear() ?? "?")}` : ""}${e.highlights.length ? ` — ${e.highlights.join("; ")}` : ""}${e.description ? ` — ${e.description}` : ""}`).join("\n") || "none"}`,
     `Education: ${profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; ") || "none"}`,
     `Projects: ${profile.projects.map((p) => `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "none"}`,
