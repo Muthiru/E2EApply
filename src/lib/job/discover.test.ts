@@ -1,0 +1,519 @@
+import { describe, expect, it } from "vitest";
+import {
+  dedupeCandidates,
+  estimateMatch,
+  filterBoardCandidates,
+  filterTrackedCandidates,
+  isJobPostingTitle,
+  isJobPostingUrl,
+  parseJinaSearchResults,
+  parseJobicyPayload,
+  parseMusePayload,
+  parseRemoteOkPayload,
+  parseRemotivePayload,
+  buildJobSearchQuery,
+  rankCandidatesByQuery,
+  scoreByQueryWords,
+  type DiscoverCandidate,
+} from "./discover";
+
+const baseCandidate = (overrides: Partial<DiscoverCandidate> = {}): DiscoverCandidate => ({
+  title: "Senior Engineer",
+  company: "Acme",
+  url: "https://jobs.lever.co/acme/senior-engineer",
+  snippet: "We build things.",
+  source: "jina",
+  estimatedMatch: null,
+  matchedSkills: [],
+  ...overrides,
+});
+
+describe("parseJinaSearchResults", () => {
+  it("parses title-link lines followed by snippet text", () => {
+    const markdown = [
+      "# Search Results",
+      "",
+      "[Senior Engineer at Acme](https://jobs.lever.co/acme/123)",
+      "Acme is hiring a Senior Engineer to build the platform.",
+      "",
+      "[DevOps Lead - Globex](https://boards.greenhouse.io/globex/jobs/456)",
+      "Join Globex and own the infrastructure stack.",
+      "",
+    ].join("\n");
+
+    const results = parseJinaSearchResults(markdown, 10);
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      title: "Senior Engineer at Acme",
+      url: "https://jobs.lever.co/acme/123",
+      snippet: "Acme is hiring a Senior Engineer to build the platform.",
+      source: "jina",
+    });
+    expect(results[1].title).toBe("DevOps Lead - Globex");
+  });
+
+  it("respects the limit", () => {
+    const lines = [1, 2, 3, 4, 5].flatMap((n) => [
+      `[Job ${n}](https://example.com/jobs/${n})`,
+      `Snippet for job ${n}.`,
+    ]);
+
+    expect(parseJinaSearchResults(lines.join("\n"), 3)).toHaveLength(3);
+  });
+
+  it("skips non-link lines and empty titles", () => {
+    const markdown = [
+      "Some random intro text.",
+      "",
+      "[](https://example.com/empty-title)",
+      "[Real Job](https://example.com/real)",
+      "",
+    ].join("\n");
+
+    const results = parseJinaSearchResults(markdown, 10);
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe("Real Job");
+  });
+
+  it("drops job seeker profiles and company pages from job boards", () => {
+    const markdown = [
+      "[Senior Engineer at Acme](https://www.linkedin.com/jobs/view/1234567890)",
+      "Acme is hiring a Senior Engineer.",
+      "",
+      "[John Doe - Senior Engineer - Profile - LinkedIn](https://www.linkedin.com/in/johndoe)",
+      "10+ years of experience, open to work.",
+      "",
+      "[DevOps Lead - Globex](https://boards.greenhouse.io/globex/jobs/456)",
+      "Join Globex.",
+      "",
+      "[Acme Careers](https://www.glassdoor.com/Overview/Working-at-Acme-EI_IE1234.htm)",
+      "About Acme.",
+      "",
+      "[Backend Engineer](https://himalayas.app/jobs/backend-engineer)",
+      "Remote backend role.",
+      "",
+      "[Acme Jobs](https://www.indeed.com/cmp/Acme/jobs)",
+      "All Acme openings.",
+      "",
+    ].join("\n");
+
+    const results = parseJinaSearchResults(markdown, 10);
+
+    expect(results.map((result) => result.url)).toEqual([
+      "https://www.linkedin.com/jobs/view/1234567890",
+      "https://boards.greenhouse.io/globex/jobs/456",
+      "https://himalayas.app/jobs/backend-engineer",
+    ]);
+  });
+});
+
+describe("isJobPostingUrl", () => {
+  it("accepts real job postings on the named job boards", () => {
+    expect(isJobPostingUrl("https://www.linkedin.com/jobs/view/1234567890")).toBe(true);
+    expect(isJobPostingUrl("https://www.indeed.com/viewjob?jk=abc123")).toBe(true);
+    expect(isJobPostingUrl("https://www.indeed.com/rc/clk?jk=abc123")).toBe(true);
+    expect(isJobPostingUrl("https://www.glassdoor.com/job-listing/senior-engineer-JL_IC.htm")).toBe(true);
+    expect(isJobPostingUrl("https://himalayas.app/jobs/backend-engineer")).toBe(true);
+    expect(isJobPostingUrl("https://boards.greenhouse.io/acme/jobs/4567890")).toBe(true);
+    expect(isJobPostingUrl("https://jobs.lever.co/acme/senior-engineer")).toBe(true);
+  });
+
+  it("rejects job seeker profiles on the named job boards", () => {
+    expect(isJobPostingUrl("https://www.linkedin.com/in/johndoe")).toBe(false);
+    expect(isJobPostingUrl("https://www.linkedin.com/company/acme")).toBe(false);
+    expect(isJobPostingUrl("https://www.linkedin.com/jobs/search")).toBe(false);
+    expect(isJobPostingUrl("https://www.indeed.com/cmp/Acme/jobs")).toBe(false);
+    expect(isJobPostingUrl("https://www.glassdoor.com/Overview/Working-at-Acme-EI_IE1234.htm")).toBe(false);
+    expect(isJobPostingUrl("https://www.glassdoor.com/profile/jane-smith.htm")).toBe(false);
+    expect(isJobPostingUrl("https://himalayas.app/companies/acme")).toBe(false);
+    expect(isJobPostingUrl("https://himalayas.app/@johndoe")).toBe(false);
+  });
+
+  it("rejects candidate profiles and portfolio pages from web search", () => {
+    expect(isJobPostingUrl("https://www.golangprojects.com/golang-go-profile-john-Senior-Go-Engineer.html")).toBe(false);
+    expect(isJobPostingUrl("https://spdeepak.github.io/")).toBe(false);
+    expect(isJobPostingUrl("https://jane.gitlab.io/")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/jane-resume-2026.pdf")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/assets/logo.svg")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/profile/")).toBe(false);
+  });
+
+  it("rejects career guide and definition articles", () => {
+    expect(isJobPostingUrl("https://www.coursera.org/articles/full-stack-developer")).toBe(false);
+    expect(isJobPostingUrl("https://aws.amazon.com/what-is/full-stack-development/")).toBe(false);
+    expect(isJobPostingUrl("https://www.w3schools.com/whatis/whatis_fullstack.asp")).toBe(false);
+    expect(isJobPostingUrl("https://en.wikipedia.org/wiki/Full_stack")).toBe(false);
+    expect(isJobPostingUrl("https://www.careerexplorer.com/careers/full-stack-developer/")).toBe(false);
+    expect(isJobPostingUrl("https://www.glassdoor.com/careers/full-stack-developer-career")).toBe(false);
+  });
+
+  it("rejects generic profile pages and social media", () => {
+    expect(isJobPostingUrl("https://example.com/profile/jane")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/people/jane")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/team")).toBe(false);
+    expect(isJobPostingUrl("https://www.youtube.com/watch?v=abc")).toBe(false);
+    expect(isJobPostingUrl("https://twitter.com/jane_doe")).toBe(false);
+    expect(isJobPostingUrl("https://github.com/janedoe")).toBe(false);
+  });
+
+  it("rejects malformed urls", () => {
+    expect(isJobPostingUrl("not-a-url")).toBe(false);
+    expect(isJobPostingUrl("")).toBe(false);
+  });
+
+  it("keeps generic company career pages without profile markers", () => {
+    expect(isJobPostingUrl("https://acme.com/careers/backend-engineer")).toBe(true);
+    expect(isJobPostingUrl("https://acme.com/jobs/backend-engineer")).toBe(true);
+  });
+
+  it("rejects job board search pages and career landing pages", () => {
+    expect(isJobPostingUrl("https://www.indeed.com/jobs?q=engineer")).toBe(false);
+    expect(isJobPostingUrl("https://acme.com/careers")).toBe(false);
+    expect(isJobPostingUrl("https://acme.com/careers/")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/blog/how-to-get-hired")).toBe(false);
+    expect(isJobPostingUrl("https://example.com/articles/salary-guide")).toBe(false);
+  });
+});
+
+describe("isJobPostingTitle", () => {
+  it("rejects titles that look like profiles or resumes", () => {
+    expect(isJobPostingTitle("John Doe - Profile - LinkedIn")).toBe(false);
+    expect(isJobPostingTitle("Jane Smith - Resume")).toBe(false);
+    expect(isJobPostingTitle("Jane Smith - Job Seeker")).toBe(false);
+  });
+
+  it("rejects personal portfolio titles", () => {
+    expect(isJobPostingTitle("About · Felix Geisendörfer")).toBe(false);
+    expect(isJobPostingTitle("John's Portfolio - Senior Go Engineer")).toBe(false);
+    expect(isJobPostingTitle("Open to work — Senior Engineer")).toBe(false);
+    expect(isJobPostingTitle("Hire me: Senior Software Engineer")).toBe(false);
+    expect(isJobPostingTitle("Personal site of Jane Smith")).toBe(false);
+  });
+
+  it("rejects image asset links and nav junk", () => {
+    expect(isJobPostingTitle("Image 1: DailyRemote")).toBe(false);
+    expect(isJobPostingTitle("[Image 1: RemoteOK logo]")).toBe(false);
+  });
+
+  it("rejects job definition and guide articles", () => {
+    expect(isJobPostingTitle("What Is a Full-Stack Developer?")).toBe(false);
+    expect(isJobPostingTitle("What is Full Stack Development?")).toBe(false);
+    expect(isJobPostingTitle("How to become a full stack developer")).toBe(false);
+    expect(isJobPostingTitle("Full Stack Developer Career Path")).toBe(false);
+    expect(isJobPostingTitle("Full Stack Developer: Definition & Salary")).toBe(false);
+  });
+
+  it("rejects personal portfolio name-role titles", () => {
+    expect(isJobPostingTitle("Shahriyar — Full-Stack Developer")).toBe(false);
+    expect(isJobPostingTitle("Shannon Reed | Full Stack Developer")).toBe(false);
+    expect(isJobPostingTitle("Omar Farooq Shah - Fullstack Developer")).toBe(false);
+    expect(isJobPostingTitle("Becoming a Full-Stack Developer")).toBe(false);
+    expect(isJobPostingTitle("Full-Stack Developer Role Explained: Key Insights")).toBe(false);
+  });
+
+  it("keeps ordinary job posting titles", () => {
+    expect(isJobPostingTitle("Senior Engineer at Acme")).toBe(true);
+    expect(isJobPostingTitle("DevOps Lead - Globex")).toBe(true);
+    expect(isJobPostingTitle("Senior Engineer — Acme")).toBe(true);
+  });
+});
+
+describe("buildJobSearchQuery", () => {
+  it("adds job intent when the query lacks hiring keywords", () => {
+    expect(buildJobSearchQuery("Senior Go Engineer Berlin")).toBe(
+      "Senior Go Engineer Berlin job opening hiring",
+    );
+  });
+
+  it("leaves queries that already mention jobs alone", () => {
+    expect(buildJobSearchQuery("remote backend jobs")).toBe("remote backend jobs");
+  });
+});
+
+describe("scoreByQueryWords", () => {
+  it("matches short tech terms like Go with word boundaries", () => {
+    expect(scoreByQueryWords("Senior Go Engineer", "Go engineer")).toBe(2);
+    expect(scoreByQueryWords("Senior Golang Engineer", "Go engineer")).toBe(1);
+  });
+});
+
+describe("rankCandidatesByQuery", () => {
+  it("ranks matching jobs first and drops unrelated web results when matches exist", () => {
+    const candidates = [
+      baseCandidate({
+        title: "What Is a Full-Stack Developer?",
+        company: null,
+        url: "https://example.com/guide",
+        snippet: "Career guide article",
+        source: "jina",
+      }),
+      baseCandidate({
+        title: "Senior Go Engineer",
+        company: "Acme",
+        url: "https://remoteok.com/jobs/1",
+        snippet: "Build backend services in Go.",
+        source: "board",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "Go engineer");
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].title).toBe("Senior Go Engineer");
+  });
+});
+
+describe("dedupeCandidates", () => {
+  it("drops duplicate urls ignoring case and trailing slashes", () => {
+    const candidates = [
+      baseCandidate({ url: "https://example.com/jobs/1" }),
+      baseCandidate({ url: "https://example.com/jobs/1/" }),
+      baseCandidate({ url: "https://EXAMPLE.com/jobs/1" }),
+    ];
+
+    expect(dedupeCandidates(candidates)).toHaveLength(1);
+  });
+});
+
+describe("filterTrackedCandidates", () => {
+  it("filters out jobs already tracked by url or company+title", () => {
+    const candidates = [
+      baseCandidate({ url: "https://example.com/jobs/tracked-url" }),
+      baseCandidate({ title: "Tracked Title", company: "Tracked Co" }),
+      baseCandidate({ title: "Fresh Role", company: "Fresh Co" }),
+    ];
+
+    const tracked = [
+      { sourceUrl: "https://example.com/jobs/tracked-url", company: null, title: "X" },
+      { sourceUrl: null, company: "Tracked Co", title: "Tracked Title" },
+    ];
+
+    const result = filterTrackedCandidates(candidates, tracked);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Fresh Role");
+  });
+});
+
+describe("estimateMatch", () => {
+  const candidate = baseCandidate({
+    title: "Senior Go Engineer",
+    company: "Acme",
+    snippet: "We build Kubernetes tooling.",
+  });
+
+  it("returns null when there is no query and no profile skills", () => {
+    expect(estimateMatch(candidate, [])).toEqual({
+      estimatedMatch: null,
+      matchedSkills: [],
+    });
+  });
+
+  it("scores against the search query when profile skills are empty", () => {
+    const { estimatedMatch, matchedSkills } = estimateMatch(
+      baseCandidate({
+        title: "Junior Full Stack Developer",
+        company: "Acme",
+        snippet: "Entry level role for graduates.",
+      }),
+      [],
+      "full stack developer entry level",
+    );
+
+    expect(matchedSkills).toEqual(
+      expect.arrayContaining(["full", "stack", "developer", "entry", "level"]),
+    );
+    expect(estimatedMatch).toBe(100);
+  });
+
+  it("blends query and profile skill matches when both are present", () => {
+    const { estimatedMatch, matchedSkills } = estimateMatch(
+      baseCandidate({
+        title: "Senior Go Engineer",
+        company: "Acme",
+        snippet: "We build Kubernetes tooling.",
+      }),
+      ["Go", "Kubernetes", "Rust"],
+      "Go engineer",
+    );
+
+    expect(matchedSkills).toEqual(
+      expect.arrayContaining(["go", "engineer", "Go", "Kubernetes"]),
+    );
+    expect(estimatedMatch).toBe(87);
+  });
+
+  it("counts skills found in the title, company, or snippet", () => {
+    const { estimatedMatch, matchedSkills } = estimateMatch(candidate, [
+      "Go",
+      "Kubernetes",
+      "Rust",
+    ]);
+    expect(matchedSkills).toEqual(["Go", "Kubernetes"]);
+    expect(estimatedMatch).toBe(67);
+  });
+
+  it("uses word boundaries so short skills don't match inside words", () => {
+    const { matchedSkills } = estimateMatch(candidate, ["AI", "go"]);
+    expect(matchedSkills).toEqual(["go"]);
+  });
+});
+
+describe("parseRemoteOkPayload", () => {
+  it("skips the API metadata entry and maps job fields", () => {
+    const payload = [
+      { last_updated: 1787040007, legal: "API Terms of Service" },
+      {
+        position: "Senior Go Engineer",
+        company: "Solarisbank AG",
+        url: "https://remoteok.com/remote-jobs/103028-senior-go-engineer",
+        location: "Remote",
+        tags: ["dev", "golang", "remote"],
+      },
+      {
+        position: "Designer",
+        url: "https://remoteok.com/remote-jobs/103029-designer",
+        tags: ["design"],
+      },
+    ];
+
+    const jobs = parseRemoteOkPayload(payload);
+
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({
+      title: "Senior Go Engineer",
+      company: "Solarisbank AG",
+      url: "https://remoteok.com/remote-jobs/103028-senior-go-engineer",
+      location: "Remote",
+      tags: [],
+    });
+    expect(jobs[1].company).toBeNull();
+  });
+});
+
+describe("parseRemotivePayload", () => {
+  it("maps job fields and drops entries without titles or urls", () => {
+    const payload = {
+      jobs: [
+        {
+          title: "Senior Independent AI Engineer",
+          company_name: "A.Team",
+          url: "https://remotive.com/remote-jobs/software-development/senior-ai-engineer-1919266",
+          location: "Anywhere",
+          tags: ["ai"],
+        },
+        { company_name: "No Title Co", url: "https://example.com/job" },
+      ],
+    };
+
+    const jobs = parseRemotivePayload(payload);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: "Senior Independent AI Engineer",
+      company: "A.Team",
+      location: "Anywhere",
+      tags: ["ai"],
+    });
+  });
+});
+
+describe("parseJobicyPayload", () => {
+  it("maps job fields and decodes html entities in the excerpt", () => {
+    const payload = {
+      jobs: [
+        {
+          jobTitle: "Startup Customer Success Manager",
+          companyName: "Ashby",
+          url: "https://jobicy.com/jobs/145717-csm",
+          jobGeo: "Canada, USA",
+          jobIndustry: ["Customer Support &amp; Success"],
+          jobExcerpt: "Hello &amp; welcome to the team&hellip;",
+        },
+      ],
+    };
+
+    const jobs = parseJobicyPayload(payload);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: "Startup Customer Success Manager",
+      company: "Ashby",
+      location: "Canada, USA",
+      tags: ["Customer Support & Success"],
+      snippet: "Hello & welcome to the team…",
+    });
+  });
+});
+
+describe("parseMusePayload", () => {
+  it("maps job fields and drops entries without landing pages", () => {
+    const payload = {
+      results: [
+        {
+          name: "Full Stack Developer",
+          company: { name: "Acme" },
+          refs: { landing_page: "https://www.themuse.com/jobs/acme/full-stack-developer" },
+          locations: [{ name: "Remote" }],
+          categories: [{ name: "Engineering" }],
+        },
+        { name: "No Page Job", company: { name: "Globex" } },
+      ],
+    };
+
+    const jobs = parseMusePayload(payload);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: "Full Stack Developer",
+      company: "Acme",
+      url: "https://www.themuse.com/jobs/acme/full-stack-developer",
+      location: "Remote",
+      tags: ["Engineering"],
+    });
+  });
+});
+
+describe("filterBoardCandidates", () => {
+  const jobs = [
+    {
+      title: "Senior Go Engineer",
+      company: "Acme",
+      url: "https://remoteok.com/jobs/1",
+      location: "Remote",
+      tags: ["golang", "backend"],
+      snippet: null,
+    },
+    {
+      title: "Marketing Lead",
+      company: "Globex",
+      url: "https://remoteok.com/jobs/2",
+      location: "Remote",
+      tags: ["marketing"],
+      snippet: null,
+    },
+    {
+      title: "Go Developer",
+      company: "Initech",
+      url: "https://jobicy.com/jobs/3",
+      location: "Berlin",
+      tags: ["golang"],
+      snippet: "Building backend services in Go.",
+    },
+  ];
+
+  it("keeps only jobs matching the query words, ranked by hits", () => {
+    const results = filterBoardCandidates(jobs, "Go engineer Berlin", 10);
+
+    expect(results.map((result) => result.url)).toEqual([
+      "https://remoteok.com/jobs/1",
+      "https://jobicy.com/jobs/3",
+    ]);
+    expect(results[0].source).toBe("board");
+  });
+
+  it("returns an empty list when nothing matches", () => {
+    expect(filterBoardCandidates(jobs, "design sales", 10)).toHaveLength(0);
+  });
+});
