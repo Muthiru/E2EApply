@@ -41,3 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 report/
+
+# build plan (source of truth lives locally, not in the repo)
+e2e-apply-build-plan-v2.md
