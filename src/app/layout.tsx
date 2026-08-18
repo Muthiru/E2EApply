@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "AI-powered job application OS — from job discovery to outcome, with a tracker that closes the loop.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html

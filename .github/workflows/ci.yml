@@ -42,14 +42,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prisma generate
+        run: npx prisma generate
+
       - name: Type check
         run: npx tsc --noEmit
 
       - name: Prisma validate
         run: npx prisma validate
-
-      - name: Prisma generate
-        run: npx prisma generate
 
       - name: Tests
         run: npm test
