@@ -23,6 +23,8 @@ export function statusDotClass(status: string): string {
 
 export function statusBadgeClass(status: string): string {
   switch (status) {
+    case "PENDING":
+      return "border-status-pending/40 text-status-pending";
     case "APPLIED":
       return "border-status-applied/40 text-status-applied";
     case "ASSESSMENT":
