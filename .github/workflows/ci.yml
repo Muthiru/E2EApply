@@ -15,7 +15,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: e2eapply
-          POSTGRES_PASSWORD: e2eapply_dev
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'e2eapply_dev' }}
           POSTGRES_DB: e2eapply
         ports:
           - 5432:5432
@@ -26,7 +26,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://e2eapply:e2eapply_dev@localhost:5432/e2eapply
+      DATABASE_URL: postgresql://e2eapply:${{ secrets.POSTGRES_PASSWORD || 'e2eapply_dev' }}@localhost:5432/e2eapply
 
     steps:
       - uses: actions/checkout@v4
@@ -42,14 +42,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prisma generate
+        run: npx prisma generate
+
       - name: Type check
         run: npx tsc --noEmit
 
       - name: Prisma validate
         run: npx prisma validate
 
-      - name: Prisma generate
-        run: npx prisma generate
+      - name: Tests
+        run: npm test
 
       - name: Duplication check
         run: npx jscpd src --config jscpd.json

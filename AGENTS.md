@@ -21,6 +21,7 @@ read-verify → write-code → verify-before-commit → commit
 ## Hard rules
 
 - **No commit without the verify-before-commit gate + explicit user approval.** Ever.
+- **Always split commits** into small logical units (one concern per commit, e.g., data model / auth / feature / wrapper) — never one big commit when the change set has distinct concerns.
 - **No push** unless the user explicitly asks.
 - Never commit `.env*` (real) or secrets; `.env.example` is the committed template.
 - The `docs/ats-tos-review.md` guardrails apply to all code: no unattended auto-submit, no bypassing bot controls, human-in-the-loop submits only.

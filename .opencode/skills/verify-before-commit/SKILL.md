@@ -9,13 +9,13 @@ This skill is the mandatory checkpoint between writing code and committing. Noth
 
 ## Process
 
-1. **Run the full verification suite** (from the repo root, sequentially):
+1. **Run the full verification suite** (from the repo root, sequentially — no skips):
    - `npm run lint`
    - `npx tsc --noEmit`
    - `npx prisma validate` (if `prisma/schema.prisma` exists)
-   - `npm run build` (if the app builds; skip with a note if the change is docs-only)
-   - Run tests if any exist (`npm test` / the project's test script — check `package.json`)
-2. **Inspect the diff** — `git status --porcelain` and `git diff` (or `git diff --cached`):
+   - `npm run build`
+   - `npm test` (the project's test script — read `package.json` for the exact name)
+2. **Inspect the diff** — `git status --porcelain` and `git diff HEAD` (covers both staged and unstaged):
    - Reject any unintended files (build artifacts, `node_modules`, `.env*` real secrets, logs).
    - Reject any hardcoded secrets/API keys anywhere in the diff.
    - Check for TODO/FIXME/debug leftovers and stub code not part of the task.
@@ -25,6 +25,7 @@ This skill is the mandatory checkpoint between writing code and committing. Noth
 ## Failure handling
 
 - If any check fails or anything is rejected: **stop. Do not commit.** Fix the issue (with the user's approval), then re-run this skill from the top.
+- If a check cannot run at all (e.g., missing environment): report the gate as **blocked**, not passed. Do not declare the gate green on a skipped check. The user may explicitly waive the check — record the waiver in the report — but never default to skipping.
 
 ## Exit / handoff
 
