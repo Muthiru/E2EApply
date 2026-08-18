@@ -6,13 +6,23 @@ import { getAiProvider } from "@/lib/ai";
 import { extractJson } from "@/lib/cv/sanitize";
 import { aiErrorText } from "@/lib/ai/parse";
 import { getApplicationContext } from "@/lib/job/context";
-import { fetchPageText, isLinkedInSearchUrl, normalizeUrl } from "@/lib/job/fetch";
+import { fetchJobPageText, isLinkedInSearchUrl, normalizeUrl } from "@/lib/job/fetch";
 import type { ApplicationStatus } from "@prisma/client";
 import {
   JOB_RULES,
   JOB_SCHEMA_DESCRIPTION,
   sanitizeJobFromAi,
 } from "@/lib/job/extract";
+import {
+  isCvTemplateId,
+  isClTemplateId,
+  type ClTemplateId,
+  type CvTemplateId,
+} from "@/lib/job/templates";
+import {
+  buildCvKeywordCoverage,
+  type CvAlignmentCheck,
+} from "@/lib/job/cvAlignment";
 import {
   SCORE_RULES,
   SCORE_SCHEMA_DESCRIPTION,
@@ -57,7 +67,7 @@ export async function addJobFromText(
       };
     }
     try {
-      text = await fetchPageText(effectiveUrl);
+      text = await fetchJobPageText(effectiveUrl);
     } catch (error) {
       return {
         ok: false,
@@ -276,16 +286,28 @@ export async function generateApplicationDocuments(
   const cvText = sanitizeCvFromAi(cvRaw);
   const clText = sanitizeCoverLetterFromAi(clRaw);
 
-  if (!cvText && !clText) {
-    return { ok: false, error: "Document generation failed — please retry." };
+  if (!cvText || !clText) {
+    const missing = [
+      !cvText ? "CV" : null,
+      !clText ? "cover letter" : null,
+    ].filter(Boolean);
+    return {
+      ok: false,
+      error: `Document generation missed the ${missing.join(" and ")} — please retry.`,
+    };
   }
 
-  if (cvText) {
-    await upsertDocument(applicationId, "CV", cvText);
-  }
-  if (clText) {
-    await upsertDocument(applicationId, "COVER_LETTER", clText);
-  }
+  const cvDocument = await upsertDocument(applicationId, "CV", cvText);
+  await upsertDocument(applicationId, "COVER_LETTER", clText);
+
+  await scoreCvKeywordCoverage({
+    documentId: cvDocument.id,
+    cvContent: cvText,
+    jobText,
+    profileText,
+  }).catch((error) => {
+    console.warn("[cv-alignment] post-generation check failed:", error);
+  });
 
   return { ok: true };
 }
@@ -294,13 +316,13 @@ async function upsertDocument(
   applicationId: string,
   type: "CV" | "COVER_LETTER",
   content: string,
-) {
+): Promise<{ id: string; version: number }> {
   const latest = await prisma.document.findFirst({
     where: { applicationId, type },
     orderBy: { version: "desc" },
     select: { version: true },
   });
-  await prisma.document.create({
+  return prisma.document.create({
     data: {
       applicationId,
       type,
@@ -308,6 +330,7 @@ async function upsertDocument(
       content,
       isFinal: false,
     },
+    select: { id: true, version: true },
   });
 }
 
@@ -360,6 +383,118 @@ export async function saveFinalDocument(
   ]);
 
   return { ok: true };
+}
+
+export type SetCvTemplateResult = { ok: true } | { ok: false; error: string };
+
+async function updateOwnedApplicationTemplate(
+  applicationId: string,
+  data: { cvTemplate: CvTemplateId } | { clTemplate: ClTemplateId },
+): Promise<SetCvTemplateResult> {
+  const { userId } = await auth.protect();
+  const application = await prisma.application.findFirst({
+    where: { id: applicationId, user: { clerkId: userId } },
+    select: { id: true },
+  });
+  if (!application) return { ok: false, error: "Application not found." };
+
+  await prisma.application.update({
+    where: { id: applicationId },
+    data,
+  });
+
+  return { ok: true };
+}
+
+export async function setApplicationCvTemplate(
+  applicationId: string,
+  templateId: string,
+): Promise<SetCvTemplateResult> {
+  if (!isCvTemplateId(templateId)) {
+    return { ok: false, error: "Unknown template." };
+  }
+  const template: CvTemplateId = templateId;
+
+  return updateOwnedApplicationTemplate(applicationId, { cvTemplate: template });
+}
+
+export type SetClTemplateResult = { ok: true } | { ok: false; error: string };
+
+export async function setApplicationClTemplate(
+  applicationId: string,
+  templateId: string,
+): Promise<SetClTemplateResult> {
+  if (!isClTemplateId(templateId)) {
+    return { ok: false, error: "Unknown template." };
+  }
+  const template: ClTemplateId = templateId;
+
+  return updateOwnedApplicationTemplate(applicationId, { clTemplate: template });
+}
+
+export type CheckCvAlignmentResult =
+  | { ok: true; result: CvAlignmentCheck }
+  | { ok: false; error: string };
+
+async function scoreCvKeywordCoverage({
+  documentId,
+  cvContent,
+  jobText,
+  profileText,
+}: {
+  documentId: string;
+  cvContent: string;
+  jobText: string;
+  profileText: string;
+}): Promise<CvAlignmentCheck> {
+  const result = buildCvKeywordCoverage({ jobText, cvContent, profileText });
+  if (!result) {
+    throw new Error("No job keywords were detected for alignment scoring.");
+  }
+
+  await prisma.document.update({
+    where: { id: documentId },
+    data: {
+      alignmentScore: result.score,
+      alignmentDetails: result,
+    },
+  });
+
+  return result;
+}
+
+export async function checkCvKeywordCoverage(
+  applicationId: string,
+): Promise<CheckCvAlignmentResult> {
+  const context = await getApplicationContext(applicationId);
+
+  if (!context) {
+    return { ok: false, error: "A saved profile is required to check alignment." };
+  }
+
+  const latestCv = await prisma.document.findFirst({
+    where: { applicationId, type: "CV" },
+    orderBy: [{ isFinal: "desc" }, { version: "desc" }],
+    select: { id: true, content: true },
+  });
+  if (!latestCv?.content) {
+    return { ok: false, error: "Generate the CV first, then check alignment." };
+  }
+
+  try {
+    const result = await scoreCvKeywordCoverage({
+      documentId: latestCv.id,
+      cvContent: latestCv.content,
+      jobText: context.jobText,
+      profileText: context.profileText,
+    });
+    return { ok: true, result };
+  } catch (error) {
+    return {
+      ok: false,
+      error: aiErrorText(error, "Alignment check failed — retry."),
+    };
+  }
 }
 
 const MANUAL_STATUSES: ApplicationStatus[] = [

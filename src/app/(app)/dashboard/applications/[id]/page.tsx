@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { matchBadgeClass, statusLabel } from "@/lib/status";
 import type { JobMatchDetails } from "@/lib/job/score";
+import type { CvAlignmentCheck } from "@/lib/job/cvAlignment";
 import { ScoreButton } from "@/components/applications/score-button";
 import { DocumentPanel } from "@/components/applications/document-panel";
 import { StatusControl } from "@/components/applications/status-control";
@@ -146,7 +147,12 @@ export default async function ApplicationDetailPage({
         applicationId={application.id}
         cv={
           latestCv
-            ? { text: latestCv.content ?? "", version: latestCv.version, isFinal: latestCv.isFinal }
+            ? {
+                text: latestCv.content ?? "",
+                version: latestCv.version,
+                isFinal: latestCv.isFinal,
+                alignment: (latestCv.alignmentDetails ?? null) as CvAlignmentCheck | null,
+              }
             : null
         }
         coverLetter={
@@ -167,6 +173,9 @@ export default async function ApplicationDetailPage({
           github: application.user.profile?.github ?? null,
           linkedin: application.user.profile?.linkedin ?? null,
         }}
+        cvTemplate={application.cvTemplate ?? "classic"}
+        clTemplate={application.clTemplate ?? "classic"}
+        masterCvText={application.user.profile?.masterCvText ?? null}
       />
 
       <section className="rounded-lg border p-5">

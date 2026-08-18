@@ -4,21 +4,27 @@ import { prisma } from "@/lib/prisma";
 import { matchBadgeClass, statusBadgeClass, statusDotClass, statusLabel } from "@/lib/status";
 import { isLikelyGhosted } from "@/lib/job/tracker";
 import { JobPaste } from "@/components/applications/job-paste";
+import { JobDiscovery } from "@/components/applications/job-discovery";
+import { getDiscoveryPrefill } from "@/lib/actions/discover";
 import { GhostedButton } from "@/components/applications/ghosted-button";
 import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
 
 export default async function ApplicationsPage() {
   const { userId } = await auth.protect();
 
+  const [applications, prefill] = await Promise.all([
+    prisma.application.findMany({
+      where: { user: { clerkId: userId } },
+      include: {
+        job: true,
+        statusEvents: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    getDiscoveryPrefill(),
+  ]);
+
   const now = new Date();
-  const applications = await prisma.application.findMany({
-    where: { user: { clerkId: userId } },
-    include: {
-      job: true,
-      statusEvents: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
-    orderBy: { createdAt: "desc" },
-  });
 
   return (
     <div className="space-y-6">
@@ -33,11 +39,13 @@ export default async function ApplicationsPage() {
 
       <JobPaste />
 
+      <JobDiscovery prefillQuery={prefill.query} />
+
       {applications.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <p className="text-sm font-medium">No applications tracked yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Paste a job above to start.
+            Paste a job or discover one above to start.
           </p>
         </div>
       ) : (

@@ -60,6 +60,7 @@ model Profile {
   linkedin       String?
   masterCvName   String?
   masterCvData   Bytes?
+  masterCvText   String?
   cvSectionOrder String[]
   skills         Skill[]
   experiences    WorkExperience[]
@@ -176,6 +177,8 @@ model Application {
   job                   Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status                ApplicationStatus @default(PENDING)
   matchScoreAtApplication Int?
+  cvTemplate             String?          @default("classic")
+  clTemplate             String?          @default("classic")
   notes                 String?
   appliedAt             DateTime?
   createdAt             DateTime          @default(now())
@@ -201,16 +204,18 @@ model StatusEvent {
 }
 
 model Document {
-  id            String         @id @default(cuid())
-  applicationId String?
-  application   Application?   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  type          DocumentType
-  version       Int            @default(1)
-  content       String?
-  storageKey    String?
-  fileName      String?
-  isFinal       Boolean        @default(false)
-  createdAt     DateTime       @default(now())
+  id              String         @id @default(cuid())
+  applicationId   String?
+  application     Application?   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type            DocumentType
+  version         Int            @default(1)
+  content         String?
+  storageKey      String?
+  fileName        String?
+  isFinal         Boolean        @default(false)
+  alignmentScore  Int?
+  alignmentDetails Json?
+  createdAt       DateTime       @default(now())
 
   @@unique([applicationId, type, version])
 }

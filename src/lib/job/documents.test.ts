@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  cvBulletContent,
+  extractMasterCvContactBlock,
+  isCvBulletLine,
   linkHref,
   sanitizeCoverLetterFromAi,
   sanitizeCvFromAi,
   splitCvSections,
+  stripMasterCvContactBlock,
 } from "./documents";
 
 const validCv = `## Summary
@@ -100,6 +104,20 @@ describe("splitCvSections", () => {
     expect(sections.skills).toEqual(["- SQL"]);
   });
 });
+describe("cv bullet helpers", () => {
+  it("detects common bullet prefixes", () => {
+    expect(isCvBulletLine("- SQL")).toBe(true);
+    expect(isCvBulletLine("* SQL")).toBe(true);
+    expect(isCvBulletLine("• SQL")).toBe(true);
+    expect(isCvBulletLine("SQL")).toBe(false);
+  });
+
+  it("strips the bullet prefix from content", () => {
+    expect(cvBulletContent("- Built APIs in Go")).toBe("Built APIs in Go");
+    expect(cvBulletContent("• Built APIs in Go")).toBe("Built APIs in Go");
+  });
+});
+
 describe("linkHref", () => {
   it("keeps http(s) URLs", () => {
     expect(linkHref("https://github.com/janedoe")).toBe("https://github.com/janedoe");
@@ -119,5 +137,50 @@ describe("linkHref", () => {
     expect(linkHref("- Provided 2nd level support")).toBeNull();
     expect(linkHref("BSc in Information Technology")).toBeNull();
     expect(linkHref("")).toBeNull();
+  });
+});
+
+describe("extractMasterCvContactBlock", () => {
+  it("uses the lines before the first CV section heading", () => {
+    const block = extractMasterCvContactBlock([
+      "Daniel Muthiru Njama",
+      "Full Stack Developer",
+      "Helsinki, Finland",
+      "daniel@example.com | linkedin.com/in/daniel",
+      "",
+      "Summary",
+      "Developer with platform experience.",
+    ].join("\n"));
+
+    expect(block).toBe([
+      "Daniel Muthiru Njama",
+      "Full Stack Developer",
+      "Helsinki, Finland",
+      "daniel@example.com | linkedin.com/in/daniel",
+    ].join("\n"));
+  });
+
+  it("returns null when no master CV text exists", () => {
+    expect(extractMasterCvContactBlock(null)).toBeNull();
+    expect(extractMasterCvContactBlock("")).toBeNull();
+  });
+});
+
+describe("stripMasterCvContactBlock", () => {
+  it("removes the extracted contact block from the beginning of the master CV body", () => {
+    const text = [
+      "Daniel Muthiru Njama",
+      "Full Stack Developer",
+      "Helsinki, Finland",
+      "",
+      "Summary",
+      "Developer with platform experience.",
+    ].join("\n");
+    const contact = extractMasterCvContactBlock(text);
+
+    expect(stripMasterCvContactBlock(text, contact)).toBe([
+      "Summary",
+      "Developer with platform experience.",
+    ].join("\n"));
   });
 });

@@ -128,10 +128,11 @@ export async function POST(request: Request) {
   }
 
   const masterCvData = Buffer.from(await file.arrayBuffer());
+  const masterCvText = text.trim().slice(0, 40_000);
   await prisma.profile.upsert({
     where: { userId: user.id },
-    update: { masterCvName: file.name, masterCvData },
-    create: { userId: user.id, masterCvName: file.name, masterCvData },
+    update: { masterCvName: file.name, masterCvData, masterCvText },
+    create: { userId: user.id, masterCvName: file.name, masterCvData, masterCvText },
   });
 
   return NextResponse.json({ ok: true, profile });

@@ -2,6 +2,13 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { CvDocument, CoverLetterDocument } from "@/components/documents/pdf";
+import { extractMasterCvContactBlock } from "@/lib/job/documents";
+import {
+  DEFAULT_CL_TEMPLATE,
+  DEFAULT_CV_TEMPLATE,
+  isClTemplateId,
+  isCvTemplateId,
+} from "@/lib/job/templates";
 
 export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
   return async function handler(
@@ -45,12 +52,18 @@ export async function renderApplicationPdf(
 
   const document = application?.documents[0];
   if (!application || !document?.content) return null;
+  const masterCvContactBlock = extractMasterCvContactBlock(
+    application.user.profile?.masterCvText,
+  );
 
   const buffer =
     type === "CV"
       ? await renderToBuffer(
           CvDocument({
             text: document.content,
+            template: isCvTemplateId(application.cvTemplate)
+              ? application.cvTemplate
+              : DEFAULT_CV_TEMPLATE,
             header: {
               fullName: application.user.profile?.fullName ?? null,
               title: application.user.profile?.title ?? null,
@@ -60,10 +73,17 @@ export async function renderApplicationPdf(
               github: application.user.profile?.github ?? null,
               linkedin: application.user.profile?.linkedin ?? null,
             },
+            contactBlockText: masterCvContactBlock,
           }),
         )
       : await renderToBuffer(
-          CoverLetterDocument({ text: document.content }),
+          CoverLetterDocument({
+            text: document.content,
+            template: isClTemplateId(application.clTemplate)
+              ? application.clTemplate
+              : DEFAULT_CL_TEMPLATE,
+            fullName: application.user.profile?.fullName ?? null,
+          }),
         );
 
   return { buffer, company: application.job.company ?? "job" };
