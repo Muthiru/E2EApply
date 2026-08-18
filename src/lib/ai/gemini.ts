@@ -91,15 +91,34 @@ export class GeminiProvider implements AiProvider {
     let lastError: AiProviderError | null = null;
 
     for (let attempt = 0; attempt <= RETRY_ATTEMPTS; attempt++) {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": this.apiKey,
-        },
-        signal: AbortSignal.timeout(timeoutMs),
-        body: payload,
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": this.apiKey,
+          },
+          signal: AbortSignal.timeout(timeoutMs),
+          body: payload,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown network error";
+        lastError = new AiProviderError(
+          `Gemini request failed: ${message}`,
+          this.name,
+        );
+
+        if (attempt === RETRY_ATTEMPTS) {
+          return lastError;
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY_MS * 2 ** attempt),
+        );
+        continue;
+      }
 
       if (response.ok) {
         return response;
