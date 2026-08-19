@@ -3,6 +3,8 @@ export type AiRole = "system" | "user" | "assistant";
 export type AiMessage = {
   role: AiRole;
   content: string;
+  /** Optional image attachment (base64 data), supported by vision-capable providers. */
+  image?: { mimeType: string; dataBase64: string };
 };
 
 export type AiCompleteOptions = {

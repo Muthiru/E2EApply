@@ -44,7 +44,19 @@ export class GeminiProvider implements AiProvider {
       .filter((m) => m.role !== "system")
       .map((m) => ({
         role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
+        parts: [
+          { text: m.content },
+          ...(m.image
+            ? [
+                {
+                  inline_data: {
+                    mime_type: m.image.mimeType,
+                    data: m.image.dataBase64,
+                  },
+                },
+              ]
+            : []),
+        ],
       }));
 
     const timeoutMs = 60_000;
