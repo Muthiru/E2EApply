@@ -10,8 +10,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-3">
-          <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/dashboard" className="text-base font-semibold tracking-tight sm:text-lg">
             E2E Apply
           </Link>
           <div className="flex items-center gap-4">
@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {children}
       </main>
     </div>

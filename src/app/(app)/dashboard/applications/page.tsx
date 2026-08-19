@@ -49,7 +49,7 @@ export default async function ApplicationsPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -57,7 +57,7 @@ export default async function ApplicationsPage() {
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Match</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Last event</th>
+                <th className="hidden px-4 py-3 font-medium sm:table-cell">Last event</th>
                 <th className="px-4 py-3 font-medium"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -99,7 +99,7 @@ export default async function ApplicationsPage() {
                       {statusLabel(application.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                     {application.statusEvents[0]?.createdAt.toLocaleDateString() ??
                       "—"}
                   </td>
