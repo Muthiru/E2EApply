@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { saveProfile } from "@/lib/actions/profile";
 import type { ProfileInput } from "@/lib/validations/profile";
 import { CvUpload } from "./cv-upload";
+import { CertificateImport } from "./certificate-import";
 import type { CvParsedProfile } from "@/lib/cv/types";
 
 const cvDate = (v: string | null | undefined): Date | null =>
@@ -536,7 +537,10 @@ export function ProfileForm(props: Readonly<{
 
       <Section title="Certifications" error={sectionHas("certifications")}>
         {form.certifications.map((c, i) => (
-          <div key={c.id ?? i} className="grid grid-cols-[1fr_1fr_1fr_36px] gap-2">
+          <div
+            key={c.id ?? i}
+            className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_1fr_36px]"
+          >
             <Input
               value={c.name}
               onChange={(v) => updateItem("certifications", i, { name: v })}
@@ -553,6 +557,13 @@ export function ProfileForm(props: Readonly<{
               onChange={(v) => updateItem("certifications", i, { url: v })}
               placeholder="URL"
             />
+            <Input
+              type="date"
+              value={toDateInput(c.date)}
+              onChange={(v) =>
+                updateItem("certifications", i, { date: cvDate(v) })
+              }
+            />
             <button
               type="button"
               onClick={() => removeItem("certifications", i)}
@@ -562,16 +573,32 @@ export function ProfileForm(props: Readonly<{
             </button>
           </div>
         ))}
-        <AddButton
-          onClick={() =>
-            set("certifications", [
-              ...form.certifications,
-              { name: "", issuer: "", url: "", date: null, id: crypto.randomUUID() },
-            ])
-          }
-        >
-          Add certification
-        </AddButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <AddButton
+            onClick={() =>
+              set("certifications", [
+                ...form.certifications,
+                { name: "", issuer: "", url: "", date: null, id: crypto.randomUUID() },
+              ])
+            }
+          >
+            Add certification
+          </AddButton>
+          <CertificateImport
+            onImported={(certificate) =>
+              set("certifications", [
+                ...form.certifications,
+                {
+                  id: crypto.randomUUID(),
+                  name: certificate.name,
+                  issuer: certificate.issuer,
+                  date: cvDate(certificate.date),
+                  url: certificate.url,
+                },
+              ])
+            }
+          />
+        </div>
       </Section>
 
       <Section title="Job search preferences">
