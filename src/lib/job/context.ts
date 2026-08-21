@@ -18,13 +18,34 @@ function stringList(value: unknown): string[] {
 export async function getApplicationContext(applicationId: string) {
   const application = await getOwnedApplication(applicationId, {
     job: true,
+    masterCv: true,
     user: { include: { profile: { include: PROFILE_INCLUDE } } },
   });
 
   if (!application?.job || !application.user.profile) return null;
 
   const profile = application.user.profile;
-  const masterCvContactBlock = extractMasterCvContactBlock(profile.masterCvText);
+  const masterCv = application.masterCv;
+  const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
+  let githubReposText = "none";
+  const githubUrlMatch = masterCv?.textContent?.match(/github\.com\/([A-Za-z0-9_.-]+)/i);
+  if (githubUrlMatch) {
+    const githubUsername = githubUrlMatch[1];
+    try {
+      const resp = await fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=15`, {
+        headers: { "User-Agent": "E2E-Apply-ATS" }
+      });
+      if (resp.ok) {
+        const repos = await resp.json();
+        if (Array.isArray(repos) && repos.length > 0) {
+          githubReposText = repos.map((r: { name: string; language?: string; description?: string }) => `${r.name}${r.language ? ` (Language: ${r.language})` : ''} — ${r.description ?? 'No description'}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch Github repos", e);
+    }
+  }
+
   const profileText = [
     `Name: ${profile.fullName ?? ""}`.trim(),
     `Title: ${profile.title ?? "not stated"}`,
@@ -33,14 +54,15 @@ export async function getApplicationContext(applicationId: string) {
     `Experience: ${profile.experiences.map((e) => `${e.title} at ${e.company}${e.startDate ? `, ${e.startDate.getFullYear()}-${e.current ? "present" : (e.endDate?.getFullYear() ?? "?")}` : ""}${e.highlights.length ? ` — ${e.highlights.join("; ")}` : ""}${e.description ? ` — ${e.description}` : ""}`).join("\n") || "none"}`,
     `Education: ${profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; ") || "none"}`,
     `Projects: ${profile.projects.map((p) => `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "none"}`,
+    `GitHub Repositories (Public, dynamically fetched): \n${githubReposText}`,
     `Certifications: ${profile.certifications.map((c) => `${c.name}${c.issuer ? `, ${c.issuer}` : ""}`).join("; ") || "none"}`,
-    `CV section order (the candidate's original CV structure, preserve it exactly): ${(profile.cvSectionOrder ?? []).length > 0 ? (profile.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
+    `CV section order (the candidate's original CV structure, preserve it exactly): ${(masterCv?.cvSectionOrder ?? []).length > 0 ? (masterCv?.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
     masterCvContactBlock
       ? `MASTER CV CONTACT BLOCK (immutable identity/contact/social lines; reuse exactly, never regenerate):\n${masterCvContactBlock}`
       : "MASTER CV CONTACT BLOCK: not captured — use profile contact fields only and never invent missing contact/social details.",
-    profile.masterCvText
-      ? `MASTER CV (the candidate's existing CV — THE source of truth for all content; base every tailored version on this exact text):\n${profile.masterCvText}`
-      : "MASTER CV: not uploaded — base the CV on the structured profile fields above and nothing else.",
+    masterCv?.textContent
+      ? `MASTER CV (${masterCv.name} — THE source of truth for all content; base every tailored version on this exact text):\n${masterCv.textContent}`
+      : "MASTER CV: not specified — base the CV on the structured profile fields above and nothing else.",
   ].join("\n");
 
   const matchDetails =

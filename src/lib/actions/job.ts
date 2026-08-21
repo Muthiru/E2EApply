@@ -577,3 +577,16 @@ export async function deleteApplication(
   }
   return { ok: true };
 }
+
+export async function setApplicationMasterCv(applicationId: string, masterCvId: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { userId } = await auth.protect();
+    await prisma.application.updateMany({
+      where: { id: applicationId, user: { clerkId: userId } },
+      data: { masterCvId },
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to update selected CV." };
+  }
+}

@@ -72,75 +72,75 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
         })),
       });
 
-    await tx.workExperience.createMany({
-      data: data.experiences.map((e) => ({
-        profileId: profile.id,
-        company: e.company,
-        title: e.title,
-        location: e.location ?? null,
-        startDate: e.startDate,
-        endDate: e.current ? null : e.endDate,
-        current: e.current ?? false,
-        description: e.description ?? null,
-        highlights: e.highlights ?? [],
-      })),
-    });
-
-    await tx.education.createMany({
-      data: data.educations.map((ed) => {
-        const gpa = ed.gpa === "" || ed.gpa == null ? null : Number.parseFloat(ed.gpa);
-        return {
+      await tx.workExperience.createMany({
+        data: data.experiences.map((e) => ({
           profileId: profile.id,
-          institution: ed.institution,
-          degree: ed.degree ?? null,
-          field: ed.field ?? null,
-          startDate: ed.startDate,
-          endDate: ed.endDate,
-          gpa: gpa !== null && Number.isFinite(gpa) ? gpa : null,
-        };
-      }),
-    });
+          company: e.company,
+          title: e.title,
+          location: e.location ?? null,
+          startDate: e.startDate,
+          endDate: e.current ? null : e.endDate,
+          current: e.current ?? false,
+          description: e.description ?? null,
+          highlights: e.highlights ?? [],
+        })),
+      });
 
-    await tx.project.createMany({
-      data: data.projects.map((p) => ({
-        profileId: profile.id,
-        name: p.name,
-        description: p.description ?? null,
-        url: p.url ?? null,
-        technologies: p.technologies ?? [],
-        startDate: p.startDate,
-        endDate: p.endDate,
-      })),
-    });
+      await tx.education.createMany({
+        data: data.educations.map((ed) => {
+          const gpa = ed.gpa === "" || ed.gpa == null ? null : Number.parseFloat(ed.gpa);
+          return {
+            profileId: profile.id,
+            institution: ed.institution,
+            degree: ed.degree ?? null,
+            field: ed.field ?? null,
+            startDate: ed.startDate,
+            endDate: ed.endDate,
+            gpa: gpa !== null && Number.isFinite(gpa) ? gpa : null,
+          };
+        }),
+      });
 
-    await tx.certification.createMany({
-      data: data.certifications.map((c) => ({
-        profileId: profile.id,
-        name: c.name,
-        issuer: c.issuer ?? null,
-        date: c.date,
-        url: c.url ?? null,
-      })),
-    });
+      await tx.project.createMany({
+        data: data.projects.map((p) => ({
+          profileId: profile.id,
+          name: p.name,
+          description: p.description ?? null,
+          url: p.url ?? null,
+          technologies: p.technologies ?? [],
+          startDate: p.startDate,
+          endDate: p.endDate,
+        })),
+      });
 
-    await tx.profilePreferences.upsert({
-      where: { profileId: profile.id },
-      create: {
-        profileId: profile.id,
-        preferredRoles: data.preferences.preferredRoles,
-        locations: data.preferences.locations,
-        remoteOnly: data.preferences.remoteOnly ?? false,
-        salaryFloor: data.preferences.salaryFloor ?? null,
-        minMatchPercent: data.preferences.minMatchPercent ?? null,
-      },
-      update: {
-        preferredRoles: data.preferences.preferredRoles,
-        locations: data.preferences.locations,
-        remoteOnly: data.preferences.remoteOnly ?? false,
-        salaryFloor: data.preferences.salaryFloor ?? null,
-        minMatchPercent: data.preferences.minMatchPercent ?? null,
-      },
-    });
+      await tx.certification.createMany({
+        data: data.certifications.map((c) => ({
+          profileId: profile.id,
+          name: c.name,
+          issuer: c.issuer ?? null,
+          date: c.date,
+          url: c.url ?? null,
+        })),
+      });
+
+      await tx.profilePreferences.upsert({
+        where: { profileId: profile.id },
+        create: {
+          profileId: profile.id,
+          preferredRoles: data.preferences.preferredRoles,
+          locations: data.preferences.locations,
+          remoteOnly: data.preferences.remoteOnly ?? false,
+          salaryFloor: data.preferences.salaryFloor ?? null,
+          minMatchPercent: data.preferences.minMatchPercent ?? null,
+        },
+        update: {
+          preferredRoles: data.preferences.preferredRoles,
+          locations: data.preferences.locations,
+          remoteOnly: data.preferences.remoteOnly ?? false,
+          salaryFloor: data.preferences.salaryFloor ?? null,
+          minMatchPercent: data.preferences.minMatchPercent ?? null,
+        },
+      });
     });
   } catch {
     return {
@@ -150,4 +150,16 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
   }
 
   return { ok: true };
+}
+
+export async function deleteMasterCv(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { userId } = await auth.protect();
+    await prisma.masterCv.deleteMany({
+      where: { id, profile: { user: { clerkId: userId } } },
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Failed to delete Master CV." };
+  }
 }

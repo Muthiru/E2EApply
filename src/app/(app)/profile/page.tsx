@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/profile/profile-form";
+import { MasterCvManager } from "@/components/profile/master-cv-manager";
 
 export default async function ProfilePage() {
   const { userId } = await auth.protect();
@@ -16,17 +17,18 @@ export default async function ProfilePage() {
       projects: { orderBy: { createdAt: "asc" } },
       certifications: { orderBy: { createdAt: "asc" } },
       preferences: true,
+      masterCvs: { orderBy: { createdAt: "asc" } },
     },
   });
 
   const serialized = profile
     ? {
-        ...profile,
-        educations: profile.educations.map((e) => ({
-          ...e,
-          gpa: e.gpa ? e.gpa.toString() : null,
-        })),
-      }
+      ...profile,
+      educations: profile.educations.map((e) => ({
+        ...e,
+        gpa: e.gpa ? e.gpa.toString() : null,
+      })),
+    }
     : null;
 
   return (
@@ -38,23 +40,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      {profile?.masterCvName && (
-        <div className="mb-6 flex items-center justify-between gap-4 rounded-lg border p-4">
-          <div>
-            <p className="text-sm font-medium">Master CV on file</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {profile.masterCvName} — every generated CV keeps this
-              document&apos;s structure, order, and links.
-            </p>
-          </div>
-          <a
-            href="/api/profile/cv-master"
-            className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
-          >
-            Download original
-          </a>
-        </div>
-      )}
+      <MasterCvManager cvs={profile?.masterCvs ?? []} />
 
       <ProfileForm profile={serialized} />
     </div>
