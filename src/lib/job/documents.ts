@@ -10,6 +10,7 @@ export const CV_RULES = `Rules:
 - Do NOT write the candidate's name, contact details, location, email, phone, LinkedIn, GitHub, website, or other identity/social-profile lines in the generated CV body. Those are immutable and are rendered verbatim from the MASTER CV contact block by the app.
 - Start the output at the first CV section heading, e.g. "## Summary".
 - Tailoring means: rephrase the master CV's own words to match the posting's language where the facts genuinely support it (ATS keyword alignment), reorder skills by relevance to the posting, and surface the posting's most important keywords in the Summary's first line if the master CV supports them.
+- **Handling Missing Requirements**: Review the "Missing requirements shown to the user" in the prompt. Search the candidate's entire profile—including Certifications, Education, and Projects—for evidence that proves they have these missing skills. If you find proof (e.g., an "AWS" certification proves "AWS" skills), update the CV's Skills list, Summary, or Experience bullets to explicitly include these missing keywords using the posting's exact terminology. DO NOT lie or invent facts; only surface keywords verified by their history or certifications.
 - Rewrite experience/project bullets from the master CV to start with strong action verbs, 2-4 bullets per role, each factual and specific to what the master CV states.
 - If the MASTER CV was not uploaded, use ONLY the structured profile fields — never invent anything to fill space.
 - Keep it to one page. Plain text only — no placeholders, no bracketed text.`;
@@ -36,7 +37,7 @@ export const COVER_LETTER_RULES = `Rules:
 - Use ONLY facts from the candidate profile and the posting. NEVER invent experience, skills, or outcomes.
 - The sender/contact block must be copied exactly from "MASTER CV CONTACT BLOCK" in the prompt. Do not rewrite, normalize, reorder, or add contact/social/profile fields.
 - The first paragraph states the exact role and company being applied to and why the candidate's profile fits.
-- Middle paragraphs map the candidate's real strengths to the posting's key requirements.
+- Middle paragraphs map the candidate's real strengths to the posting's key requirements. For any "Missing requirements", search their entire profile (including Certifications and Projects) for proof, and highlight those alternative experiences to bridge the gap without inventing facts.
 - The final paragraph is a brief, polite closing inviting a conversation.
 - Keep the letter under 350 words.
 - Never leave bracketed placeholders. Do not mention AI. Do not beg or over-apologize.`;
@@ -131,38 +132,41 @@ export function stripMasterCvContactBlock(text: string, contactBlock: string | n
     : text.trim();
 }
 
+function parseTextAsJson(text: string): unknown {
+  if (text.startsWith('"') || text.startsWith("{")) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      // not JSON
+    }
+  }
+  return text;
+}
+
+function extractTextFromObject(obj: Record<string, unknown>): string | null {
+  for (const key of ["cover_letter", "cv", "letter", "content", "text", "body"]) {
+    if (typeof obj[key] === "string" && obj[key].trim()) return obj[key];
+  }
+  const strings = Object.values(obj).filter(
+    (v): v is string => typeof v === "string" && v.trim() !== "",
+  );
+  if (strings.length === 0) return null;
+  return strings.toSorted((a, b) => b.length - a.length)[0];
+}
+
 function asDocText(input: unknown): string | null {
   if (typeof input !== "string") return null;
-  if (!input.trim()) return null;
-
-  let candidate: unknown = input;
   const trimmed = input.trim();
-  if (trimmed.startsWith('"') || trimmed.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (typeof parsed === "string") {
-        candidate = parsed;
-      } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        candidate = parsed;
-      }
-    } catch {
-      // not JSON — use the raw text
-    }
-  }
+  if (!trimmed) return null;
+
+  const candidate = parseTextAsJson(trimmed);
+  if (typeof candidate === "string") return candidate;
 
   if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
-    const obj = candidate as Record<string, unknown>;
-    for (const key of ["cover_letter", "cv", "letter", "content", "text", "body"]) {
-      if (typeof obj[key] === "string" && obj[key].trim()) return obj[key];
-    }
-    const strings = Object.values(obj).filter(
-      (v): v is string => typeof v === "string" && v.trim() !== "",
-    );
-    if (strings.length === 0) return null;
-    return strings.sort((a, b) => b.length - a.length)[0];
+    return extractTextFromObject(candidate as Record<string, unknown>);
   }
 
-  return typeof candidate === "string" ? candidate : null;
+  return null;
 }
 
 export function sanitizeCvFromAi(input: unknown): string | null {
@@ -199,10 +203,10 @@ export function linkHref(line: string): string | null {
   if (!trimmed) return null;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
-  if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(trimmed)) {
+  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmed)) {
     return `mailto:${trimmed}`;
   }
-  if (/^[A-Za-z0-9-]+\.(com|org|net|io|dev|me)\//i.test(trimmed)) {
+  if (/^[a-z0-9-]+\.(com|org|net|io|dev|me)\//i.test(trimmed)) {
     return `https://${trimmed}`;
   }
   return null;
