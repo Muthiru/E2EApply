@@ -5,17 +5,13 @@ import { useRouter } from "next/navigation";
 import { scoreApplication, setApplicationMasterCv } from "@/lib/actions/job";
 import { useToast } from "@/components/ui/toast";
 
-export function ScoreButton({
-  applicationId,
-  masterCvs = [],
-  selectedCvId = null,
-  hasScore = false
-}: {
+export function ScoreButton(props: Readonly<{
   applicationId: string;
   masterCvs?: { id: string; name: string }[];
   selectedCvId?: string | null;
   hasScore?: boolean;
-}) {
+}>) {
+  const { applicationId, masterCvs = [], selectedCvId = null, hasScore = false } = props;
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -45,6 +41,13 @@ export function ScoreButton({
     });
   };
 
+  let buttonText = "Score this job";
+  if (isPending) {
+    buttonText = "Generating…";
+  } else if (hasScore) {
+    buttonText = "Rescore";
+  }
+
   return (
     <div className="flex items-center gap-3">
       {masterCvs.length > 0 && (
@@ -66,7 +69,7 @@ export function ScoreButton({
         disabled={isPending}
         className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
       >
-        {isPending ? "Generating…" : hasScore ? "Rescore" : "Score this job"}
+        {buttonText}
       </button>
     </div>
   );
