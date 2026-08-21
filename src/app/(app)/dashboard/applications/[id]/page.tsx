@@ -23,7 +23,8 @@ export default async function ApplicationDetailPage({
       job: true,
       statusEvents: { orderBy: { createdAt: "desc" } },
       documents: { orderBy: { version: "desc" } },
-      user: { include: { profile: true } },
+      masterCv: true,
+      user: { include: { profile: { include: { masterCvs: true } } } },
     },
   });
 
@@ -82,7 +83,12 @@ export default async function ApplicationDetailPage({
               {job.matchScore}%
             </span>
           ) : (
-            <ScoreButton applicationId={application.id} />
+            <ScoreButton
+              applicationId={application.id}
+              masterCvs={application.user.profile?.masterCvs ?? []}
+              selectedCvId={application.masterCvId}
+              hasScore={job.matchScore !== null}
+            />
           )}
         </div>
 
@@ -148,20 +154,20 @@ export default async function ApplicationDetailPage({
         cv={
           latestCv
             ? {
-                text: latestCv.content ?? "",
-                version: latestCv.version,
-                isFinal: latestCv.isFinal,
-                alignment: (latestCv.alignmentDetails ?? null) as CvAlignmentCheck | null,
-              }
+              text: latestCv.content ?? "",
+              version: latestCv.version,
+              isFinal: latestCv.isFinal,
+              alignment: (latestCv.alignmentDetails ?? null) as CvAlignmentCheck | null,
+            }
             : null
         }
         coverLetter={
           latestCl
             ? {
-                text: latestCl.content ?? "",
-                version: latestCl.version,
-                isFinal: latestCl.isFinal,
-              }
+              text: latestCl.content ?? "",
+              version: latestCl.version,
+              isFinal: latestCl.isFinal,
+            }
             : null
         }
         header={{
@@ -175,7 +181,7 @@ export default async function ApplicationDetailPage({
         }}
         cvTemplate={application.cvTemplate ?? "classic"}
         clTemplate={application.clTemplate ?? "classic"}
-        masterCvText={application.user.profile?.masterCvText ?? null}
+        masterCvText={application.masterCv?.textContent ?? null}
       />
 
       <section className="rounded-lg border p-5">

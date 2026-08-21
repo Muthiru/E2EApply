@@ -46,6 +46,7 @@ export async function renderApplicationPdf(
         orderBy: [{ isFinal: "desc" }, { version: "desc" }],
         take: 1,
       },
+      masterCv: true,
       user: { include: { profile: true } },
     },
   });
@@ -53,38 +54,38 @@ export async function renderApplicationPdf(
   const document = application?.documents[0];
   if (!application || !document?.content) return null;
   const masterCvContactBlock = extractMasterCvContactBlock(
-    application.user.profile?.masterCvText,
+    application.masterCv?.textContent,
   );
 
   const buffer =
     type === "CV"
       ? await renderToBuffer(
-          CvDocument({
-            text: document.content,
-            template: isCvTemplateId(application.cvTemplate)
-              ? application.cvTemplate
-              : DEFAULT_CV_TEMPLATE,
-            header: {
-              fullName: application.user.profile?.fullName ?? null,
-              title: application.user.profile?.title ?? null,
-              location: application.user.profile?.location ?? null,
-              email: application.user.profile?.email ?? null,
-              phone: application.user.profile?.phone ?? null,
-              github: application.user.profile?.github ?? null,
-              linkedin: application.user.profile?.linkedin ?? null,
-            },
-            contactBlockText: masterCvContactBlock,
-          }),
-        )
-      : await renderToBuffer(
-          CoverLetterDocument({
-            text: document.content,
-            template: isClTemplateId(application.clTemplate)
-              ? application.clTemplate
-              : DEFAULT_CL_TEMPLATE,
+        CvDocument({
+          text: document.content,
+          template: isCvTemplateId(application.cvTemplate)
+            ? application.cvTemplate
+            : DEFAULT_CV_TEMPLATE,
+          header: {
             fullName: application.user.profile?.fullName ?? null,
-          }),
-        );
+            title: application.user.profile?.title ?? null,
+            location: application.user.profile?.location ?? null,
+            email: application.user.profile?.email ?? null,
+            phone: application.user.profile?.phone ?? null,
+            github: application.user.profile?.github ?? null,
+            linkedin: application.user.profile?.linkedin ?? null,
+          },
+          contactBlockText: masterCvContactBlock,
+        }),
+      )
+      : await renderToBuffer(
+        CoverLetterDocument({
+          text: document.content,
+          template: isClTemplateId(application.clTemplate)
+            ? application.clTemplate
+            : DEFAULT_CL_TEMPLATE,
+          fullName: application.user.profile?.fullName ?? null,
+        }),
+      );
 
   return { buffer, company: application.job.company ?? "job" };
 }

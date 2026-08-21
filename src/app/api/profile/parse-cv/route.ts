@@ -128,11 +128,30 @@ export async function POST(request: Request) {
   }
 
   const masterCvData = Buffer.from(await file.arrayBuffer());
-  const masterCvText = text.trim().slice(0, 40_000);
-  await prisma.profile.upsert({
+  const textContent = text.trim().slice(0, 40_000);
+
+  const dbProfile = await prisma.profile.upsert({
     where: { userId: user.id },
-    update: { masterCvName: file.name, masterCvData, masterCvText },
-    create: { userId: user.id, masterCvName: file.name, masterCvData, masterCvText },
+    update: {},
+    create: { userId: user.id },
+    include: { masterCvs: { orderBy: { createdAt: 'asc' } } }
+  });
+
+  // Keep max 3 CVs. Delete oldest if already at 3.
+  if (dbProfile.masterCvs.length >= 3) {
+    const oldest = dbProfile.masterCvs[0];
+    await prisma.masterCv.delete({ where: { id: oldest.id } });
+  }
+
+  await prisma.masterCv.create({
+    data: {
+      profileId: dbProfile.id,
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      fileName: file.name,
+      fileData: masterCvData,
+      textContent,
+      cvSectionOrder: profile.sectionOrder,
+    }
   });
 
   return NextResponse.json({ ok: true, profile });

@@ -58,10 +58,7 @@ model Profile {
   website        String?
   github         String?
   linkedin       String?
-  masterCvName   String?
-  masterCvData   Bytes?
-  masterCvText   String?
-  cvSectionOrder String[]
+  masterCvs      MasterCv[]
   skills         Skill[]
   experiences    WorkExperience[]
   educations     Education[]
@@ -70,6 +67,23 @@ model Profile {
   preferences    ProfilePreferences?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+}
+
+model MasterCv {
+  id             String   @id @default(cuid())
+  profileId      String
+  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  name           String
+  fileName       String
+  fileData       Bytes
+  textContent    String
+  cvSectionOrder String[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  applications   Application[]
 }
 
 model Skill {
@@ -179,6 +193,8 @@ model Application {
   matchScoreAtApplication Int?
   cvTemplate             String?          @default("classic")
   clTemplate             String?          @default("classic")
+  masterCvId            String?
+  masterCv              MasterCv?         @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
   notes                 String?
   appliedAt             DateTime?
   createdAt             DateTime          @default(now())

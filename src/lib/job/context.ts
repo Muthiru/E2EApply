@@ -18,13 +18,15 @@ function stringList(value: unknown): string[] {
 export async function getApplicationContext(applicationId: string) {
   const application = await getOwnedApplication(applicationId, {
     job: true,
+    masterCv: true,
     user: { include: { profile: { include: PROFILE_INCLUDE } } },
   });
 
   if (!application?.job || !application.user.profile) return null;
 
   const profile = application.user.profile;
-  const masterCvContactBlock = extractMasterCvContactBlock(profile.masterCvText);
+  const masterCv = application.masterCv;
+  const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
   const profileText = [
     `Name: ${profile.fullName ?? ""}`.trim(),
     `Title: ${profile.title ?? "not stated"}`,
@@ -34,13 +36,13 @@ export async function getApplicationContext(applicationId: string) {
     `Education: ${profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; ") || "none"}`,
     `Projects: ${profile.projects.map((p) => `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "none"}`,
     `Certifications: ${profile.certifications.map((c) => `${c.name}${c.issuer ? `, ${c.issuer}` : ""}`).join("; ") || "none"}`,
-    `CV section order (the candidate's original CV structure, preserve it exactly): ${(profile.cvSectionOrder ?? []).length > 0 ? (profile.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
+    `CV section order (the candidate's original CV structure, preserve it exactly): ${(masterCv?.cvSectionOrder ?? []).length > 0 ? (masterCv?.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
     masterCvContactBlock
       ? `MASTER CV CONTACT BLOCK (immutable identity/contact/social lines; reuse exactly, never regenerate):\n${masterCvContactBlock}`
       : "MASTER CV CONTACT BLOCK: not captured — use profile contact fields only and never invent missing contact/social details.",
-    profile.masterCvText
-      ? `MASTER CV (the candidate's existing CV — THE source of truth for all content; base every tailored version on this exact text):\n${profile.masterCvText}`
-      : "MASTER CV: not uploaded — base the CV on the structured profile fields above and nothing else.",
+    masterCv?.textContent
+      ? `MASTER CV (${masterCv.name} — THE source of truth for all content; base every tailored version on this exact text):\n${masterCv.textContent}`
+      : "MASTER CV: not specified — base the CV on the structured profile fields above and nothing else.",
   ].join("\n");
 
   const matchDetails =
