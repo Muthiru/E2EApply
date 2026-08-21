@@ -2,8 +2,9 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteMasterCv } from "@/lib/actions/profile";
+import { deleteMasterCv, generateExpertMasterCv } from "@/lib/actions/profile";
 import { useToast } from "@/components/ui/toast";
+import { useState } from "react";
 
 type MasterCvBadgeInfo = {
     id: string;
@@ -16,6 +17,7 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
     const router = useRouter();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
+    const [generating, setGenerating] = useState(false);
 
     const handleDelete = (id: string) => {
         if (!confirm("Are you sure you want to delete this Master CV? Applications using it will lose their context reference and fall back to Profile mode!")) return;
@@ -32,11 +34,32 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
 
     return (
         <div className="mb-6 rounded-lg border p-4 space-y-4">
-            <div>
-                <h2 className="text-base font-semibold">Your Master CVs</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    You can keep up to 3 Master CVs (e.g. Frontend, Backend, Management). Upload a new one via the &quot;Import from your CV&quot; below.
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className="text-base font-semibold">Your Master CVs</h2>
+                    <p className="mt-1 text-sm text-muted-foreground max-w-[450px]">
+                        You can keep up to 3 Master CVs (e.g. Frontend, Backend, Management). Upload a new one via the &quot;Import from your CV&quot; below, or let the AI write an expert one for you.
+                    </p>
+                </div>
+                <button
+                    onClick={() => {
+                        setGenerating(true);
+                        startTransition(async () => {
+                            const res = await generateExpertMasterCv();
+                            setGenerating(false);
+                            if (res.ok) {
+                                toast("Expert Master CV generated successfully!");
+                                router.refresh();
+                            } else {
+                                toast(res.error, "error");
+                            }
+                        });
+                    }}
+                    disabled={isPending || generating}
+                    className="rounded-md bg-foreground px-4 py-2 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
+                >
+                    {generating ? "Generating..." : "Generate AI Master CV"}
+                </button>
             </div>
 
             {cvs.length === 0 ? (

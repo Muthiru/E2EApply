@@ -75,9 +75,27 @@ function CvPreview({
     ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
 
+  let bodyText = text;
+  let tailoredTitle: string | null = null;
+  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+    tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
+    bodyText = splitBody.slice(1).join("\n");
+  }
+
+  const finalDetailLines = [...detailLines];
+  if (tailoredTitle) {
+    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
+    if (titleObjIndex !== -1) {
+      finalDetailLines[titleObjIndex] = tailoredTitle;
+    } else {
+      finalDetailLines.unshift(tailoredTitle);
+    }
+  }
+
   const contact = (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-      {detailLines.map((line, idx) => {
+      {finalDetailLines.map((line, idx) => {
         const lineKey = `det-${idx}`;
         const href = linkHref(line);
         return href ? (
@@ -105,7 +123,7 @@ function CvPreview({
 
   const body = (
     <div className={`mt-6 ${bodySpace}`}>
-      {text.split(/\r?\n/).map((line, idx) => {
+      {bodyText.split(/\r?\n/).map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) return null;
         const lineKey = `bl-${idx}`;
@@ -163,7 +181,7 @@ function CvPreview({
             </p>
           )}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-            {detailLines.map((line, idx) => {
+            {finalDetailLines.map((line, idx) => {
               const lineKey = `det2-${idx}`;
               const href = linkHref(line);
               return href ? (
@@ -188,7 +206,7 @@ function CvPreview({
           {nameLine}
         </p>
       )}
-      {detailLines.length > 0 && contact}
+      {finalDetailLines.length > 0 && contact}
       {body}
     </div>
   );
@@ -396,6 +414,49 @@ type DocumentPanelProps = {
   masterCvText: string | null;
 };
 
+function AlignmentBlock({ alignment }: Readonly<{ alignment: CvAlignmentCheck | null }>) {
+  if (!alignment) return null;
+  return (
+    <div className="mt-3 rounded-md border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">ATS keyword coverage</p>
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
+        >
+          {alignment.score}%
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        How many of the posting&apos;s requirement keywords actually appear in this CV.
+      </p>
+      <p className="mt-2 text-xs leading-relaxed">{alignment.reasoning}</p>
+      <div className="mt-2 space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {alignment.covered.map((keyword) => (
+            <span
+              key={keyword}
+              className="rounded-full border border-status-offer/40 px-2 py-0.5 text-xs text-status-offer"
+            >
+              {keyword}
+            </span>
+          ))}
+        </div>
+        {alignment.missingOwnable.length > 0 && (
+          <p className="text-xs text-status-assessment">
+            In your profile but missing from the CV — worth re-adding:
+            {alignment.missingOwnable.join(", ")}
+          </p>
+        )}
+        {alignment.missingGaps.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Not in your profile (honest gaps): {alignment.missingGaps.join(", ")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DocumentPanel(props: Readonly<DocumentPanelProps>) {
   const panelKey = [
     props.applicationId,
@@ -533,50 +594,18 @@ function DocumentPanelInner({
     </div>
   );
 
-  const alignmentBlock = alignment && (
-    <div className="mt-3 rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">ATS keyword coverage</p>
-        <span
-          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
-        >
-          {alignment.score}%
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        How many of the posting&apos;s requirement keywords actually appear in
-        this CV.
-      </p>
-      <p className="mt-2 text-xs leading-relaxed">{alignment.reasoning}</p>
-      <div className="mt-2 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {alignment.covered.map((keyword) => (
-            <span
-              key={keyword}
-              className="rounded-full border border-status-offer/40 px-2 py-0.5 text-xs text-status-offer"
-            >
-              {keyword}
-            </span>
-          ))}
-        </div>
-        {alignment.missingOwnable.length > 0 && (
-          <p className="text-xs text-status-assessment">
-            In your profile but missing from the CV — worth re-adding:
-            {alignment.missingOwnable.join(", ")}
-          </p>
-        )}
-        {alignment.missingGaps.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Not in your profile (honest gaps): {alignment.missingGaps.join(", ")}
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  const alignmentBlock = <AlignmentBlock alignment={alignment} />;
 
   let generateText = "Generate CV + cover letter";
   if (generating) generateText = "Generating…";
   else if (cv) generateText = "Regenerate";
+
+  let checkCoverageBtnText = "Check keyword coverage";
+  if (checking) {
+    checkCoverageBtnText = "Checking…";
+  } else if (alignment) {
+    checkCoverageBtnText = "Re-check coverage";
+  }
 
   let cvStatusBlock = <span className="text-status-rejected">missing</span>;
   if (cv) {
@@ -683,7 +712,7 @@ function DocumentPanelInner({
                     disabled={checking}
                     className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
                   >
-                    {checking ? "Checking…" : alignment ? "Re-check coverage" : "Check keyword coverage"}
+                    {checkCoverageBtnText}
                   </button>
                 )}
               </div>

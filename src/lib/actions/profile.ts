@@ -163,3 +163,96 @@ export async function deleteMasterCv(id: string): Promise<{ ok: true } | { ok: f
     return { ok: false, error: "Failed to delete Master CV." };
   }
 }
+
+export async function generateExpertMasterCv(): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { userId } = await auth.protect();
+    const profile = await prisma.profile.findFirst({
+      where: { user: { clerkId: userId } },
+      include: {
+        skills: true,
+        experiences: true,
+        educations: true,
+        projects: true,
+        certifications: true,
+      },
+    });
+
+    if (!profile) return { ok: false, error: "Profile not found." };
+
+    let githubReposText = "none";
+    const githubUrlMatch = profile.github?.match(/github\.com\/([\w.-]+)/i);
+    if (githubUrlMatch) {
+      const githubUsername = githubUrlMatch[1];
+      try {
+        const resp = await fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=15`, {
+          headers: { "User-Agent": "E2E-Apply-ATS" }
+        });
+        if (resp.ok) {
+          const repos = await resp.json();
+          if (Array.isArray(repos) && repos.length > 0) {
+            githubReposText = repos.map((r: { name: string; language?: string; description?: string }) => r.name + (r.language ? " (Language: " + r.language + ")" : "") + " — " + (r.description ?? "No description")).join('\n');
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch Github repos for Expert Master CV", e);
+      }
+    }
+
+    const profileText = [
+      "Name: " + (profile.fullName ?? "").trim(),
+      "Title: " + (profile.title ?? "not stated"),
+      "Summary: " + (profile.summary ?? "not stated"),
+      "Skills: " + profile.skills.map((s) => s.name + (s.years === null ? "" : " (" + s.years + "y)")).join(", "),
+      "Experience: " + profile.experiences.map((e) => e.title + " at " + e.company + " (" + (e.startDate?.getFullYear() ?? "?") + "-" + (e.endDate?.getFullYear() ?? "present") + ") — " + e.highlights.join("; ")).join("\n"),
+      "Education: " + profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; "),
+      "Projects: " + profile.projects.map((p) => p.name + " (" + p.technologies.join(", ") + ") — " + p.description).join("\n"),
+      "Certifications: " + profile.certifications.map((c) => c.name + ", " + c.issuer).join("; "),
+      "Recent Public Github Repositories of Candidate:\n" + githubReposText,
+    ].join("\n");
+
+    const { getAiProvider } = await import("@/lib/ai");
+    const { aiErrorText } = await import("@/lib/ai/parse");
+    const { CV_SCHEMA_DESCRIPTION, sanitizeCvFromAi } = await import("@/lib/job/documents");
+
+    const ai = getAiProvider();
+
+    const MASTER_CV_RULES = `Rules:
+- You are an expert resume writer. Construct a flawless, one-page master CV based strictly on the provided candidate profile.
+- You must output the candidate's professional title on the very first line (e.g. "Senior Software Engineer"), immediately followed by a blank line, then "## Summary", etc.
+- Enhance and rewrite the action verbs and descriptions to be extremely polished and professional. Do NOT invent facts or add external skills not found in the profile.
+- Output ONLY pure markdown following the requested schema.`;
+
+    let raw;
+    try {
+      raw = await ai.complete([
+        { role: "system", content: `${CV_SCHEMA_DESCRIPTION}\n\n${MASTER_CV_RULES}` },
+        { role: "user", content: `CANDIDATE PROFILE:\n${profileText}` }
+      ], { jsonMode: true, temperature: 0.4 });
+    } catch (e) {
+      return { ok: false, error: aiErrorText(e, "Generation timeout. Try again.") };
+    }
+
+    const textContent = sanitizeCvFromAi(raw);
+    if (!textContent) {
+      console.error("[generateExpertMasterCv] raw:", typeof raw === 'string' ? raw.slice(0, 500) : raw);
+      return { ok: false, error: "AI failed to generate a valid CV. Please try again." };
+    }
+
+    await prisma.masterCv.create({
+      data: {
+        profileId: profile.id,
+        name: "AI Enhanced Master CV",
+        fileName: "Master_CV_Enhanced.pdf",
+        fileData: Buffer.alloc(0),
+        textContent: textContent,
+        cvSectionOrder: ["summary", "skills", "experience", "projects", "education"],
+      }
+    });
+
+    return { ok: true };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, error: "Failed to generate Expert CV." };
+  }
+}
