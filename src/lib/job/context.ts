@@ -27,6 +27,25 @@ export async function getApplicationContext(applicationId: string) {
   const profile = application.user.profile;
   const masterCv = application.masterCv;
   const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
+  let githubReposText = "none";
+  const githubUrlMatch = masterCv?.textContent?.match(/github\.com\/([A-Za-z0-9_.-]+)/i);
+  if (githubUrlMatch) {
+    const githubUsername = githubUrlMatch[1];
+    try {
+      const resp = await fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=15`, {
+        headers: { "User-Agent": "E2E-Apply-ATS" }
+      });
+      if (resp.ok) {
+        const repos = await resp.json();
+        if (Array.isArray(repos) && repos.length > 0) {
+          githubReposText = repos.map((r: { name: string; language?: string; description?: string }) => `${r.name}${r.language ? ` (Language: ${r.language})` : ''} — ${r.description ?? 'No description'}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch Github repos", e);
+    }
+  }
+
   const profileText = [
     `Name: ${profile.fullName ?? ""}`.trim(),
     `Title: ${profile.title ?? "not stated"}`,
@@ -35,6 +54,7 @@ export async function getApplicationContext(applicationId: string) {
     `Experience: ${profile.experiences.map((e) => `${e.title} at ${e.company}${e.startDate ? `, ${e.startDate.getFullYear()}-${e.current ? "present" : (e.endDate?.getFullYear() ?? "?")}` : ""}${e.highlights.length ? ` — ${e.highlights.join("; ")}` : ""}${e.description ? ` — ${e.description}` : ""}`).join("\n") || "none"}`,
     `Education: ${profile.educations.map((ed) => [ed.degree, ed.field, ed.institution].filter(Boolean).join(", ")).join("; ") || "none"}`,
     `Projects: ${profile.projects.map((p) => `${p.name}${p.technologies.length ? ` (${p.technologies.join(", ")})` : ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "none"}`,
+    `GitHub Repositories (Public, dynamically fetched): \n${githubReposText}`,
     `Certifications: ${profile.certifications.map((c) => `${c.name}${c.issuer ? `, ${c.issuer}` : ""}`).join("; ") || "none"}`,
     `CV section order (the candidate's original CV structure, preserve it exactly): ${(masterCv?.cvSectionOrder ?? []).length > 0 ? (masterCv?.cvSectionOrder ?? []).join(" → ") : "not captured — use: Summary, Skills, Experience, Projects, Education"}`,
     masterCvContactBlock
