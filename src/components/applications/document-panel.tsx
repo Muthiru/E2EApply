@@ -44,53 +44,77 @@ function CvPreview({
   header,
   template,
   contactBlockText,
-}: {
+}: Readonly<{
   text: string;
   header: CvHeader;
   template: CvTemplateId;
   contactBlockText: string | null;
-}) {
+}>) {
   const modern = template === "modern";
   const compact = template === "compact";
+  let paddingClass = "p-10 sm:p-12";
+  if (compact) paddingClass = "p-8 sm:p-10";
+  else if (modern) paddingClass = "";
+
   const pageClass = [
     "mx-auto min-h-[760px] w-full max-w-[760px] bg-white text-neutral-950",
     "shadow-sm ring-1 ring-border",
-    compact ? "p-8 sm:p-10" : modern ? "" : "p-10 sm:p-12",
+    paddingClass,
   ].join(" ");
 
   const contactLines = contactBlockText
     ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     : [
-        header.fullName,
-        header.title,
-        header.location,
-        header.email,
-        header.phone,
-        header.github,
-        header.linkedin,
-      ].filter((line): line is string => Boolean(line));
+      header.fullName,
+      header.title,
+      header.location,
+      header.email,
+      header.phone,
+      header.github,
+      header.linkedin,
+    ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
+
+  let bodyText = text;
+  let tailoredTitle: string | null = null;
+  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+    tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
+    bodyText = splitBody.slice(1).join("\n");
+  }
+
+  const finalDetailLines = [...detailLines];
+  if (tailoredTitle) {
+    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
+    if (titleObjIndex !== -1) {
+      finalDetailLines[titleObjIndex] = tailoredTitle;
+    } else {
+      finalDetailLines.unshift(tailoredTitle);
+    }
+  }
 
   const contact = (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-      {detailLines.map((line, i) => {
+      {finalDetailLines.map((line, idx) => {
+        const lineKey = `det-${idx}`;
         const href = linkHref(line);
         return href ? (
-          <a key={i} href={href} className="text-blue-700 underline underline-offset-2">
+          <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
             {line}
           </a>
         ) : (
-          <span key={i}>{line}</span>
+          <span key={lineKey}>{line}</span>
         );
       })}
     </div>
   );
 
-  const headingClass = modern
-    ? "border-b border-blue-200 pb-1 pt-5 text-xs font-bold uppercase text-blue-700 first:pt-0"
-    : compact
-      ? "border-b border-neutral-300 pb-1 pt-3 text-[11px] font-bold uppercase first:pt-0"
-      : "border-b border-neutral-300 pb-1 pt-5 text-xs font-bold uppercase first:pt-0";
+  let headingClass = "border-b border-neutral-300 pb-1 pt-5 text-xs font-bold uppercase first:pt-0";
+  if (modern) {
+    headingClass = "border-b border-blue-200 pb-1 pt-5 text-xs font-bold uppercase text-blue-700 first:pt-0";
+  } else if (compact) {
+    headingClass = "border-b border-neutral-300 pb-1 pt-3 text-[11px] font-bold uppercase first:pt-0";
+  }
 
   const bodyClass = compact
     ? "text-[11px] leading-[1.55]"
@@ -99,13 +123,14 @@ function CvPreview({
 
   const body = (
     <div className={`mt-6 ${bodySpace}`}>
-      {text.split(/\r?\n/).map((line, i) => {
+      {bodyText.split(/\r?\n/).map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) return null;
-        const heading = /^##\s+(.+)$/.exec(trimmed);
+        const lineKey = `bl-${idx}`;
+        const heading = /^##\s+(.*)/.exec(trimmed);
         if (heading) {
           return (
-            <p key={i} className={headingClass}>
+            <p key={lineKey} className={headingClass}>
               {heading[1]}
             </p>
           );
@@ -115,7 +140,7 @@ function CvPreview({
         const href = linkHref(content);
         if (href) {
           return (
-            <p key={i} className={bodyClass}>
+            <p key={lineKey} className={bodyClass}>
               <a
                 href={href}
                 target="_blank"
@@ -129,7 +154,7 @@ function CvPreview({
         }
         if (isCvBulletLine(trimmed)) {
           return (
-            <p key={i} className={`flex gap-2 ${bodyClass}`}>
+            <p key={lineKey} className={`flex gap-2 ${bodyClass}`}>
               <span aria-hidden="true" className="mt-[0.15rem] text-blue-700">
                 •
               </span>
@@ -138,7 +163,7 @@ function CvPreview({
           );
         }
         return (
-          <p key={i} className={bodyClass}>
+          <p key={lineKey} className={bodyClass}>
             {content}
           </p>
         );
@@ -156,14 +181,15 @@ function CvPreview({
             </p>
           )}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-            {detailLines.map((line, i) => {
+            {finalDetailLines.map((line, idx) => {
+              const lineKey = `det2-${idx}`;
               const href = linkHref(line);
               return href ? (
-                <a key={i} href={href} className="text-blue-700 underline underline-offset-2">
+                <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
                   {line}
                 </a>
               ) : (
-                <span key={i}>{line}</span>
+                <span key={lineKey}>{line}</span>
               );
             })}
           </div>
@@ -180,7 +206,7 @@ function CvPreview({
           {nameLine}
         </p>
       )}
-      {detailLines.length > 0 && contact}
+      {finalDetailLines.length > 0 && contact}
       {body}
     </div>
   );
@@ -189,10 +215,10 @@ function CvPreview({
 function LetterPreview({
   text,
   template,
-}: {
+}: Readonly<{
   text: string;
   template: "classic" | "modern" | "compact";
-}) {
+}>) {
   const modern = template === "modern";
   const compact = template === "compact";
   const pageClass = [
@@ -206,11 +232,14 @@ function LetterPreview({
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph, i) => (
-      <p key={i} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
-        {paragraph}
-      </p>
-    ));
+    .map((paragraph, idx) => {
+      const pKey = `lp-${idx}`;
+      return (
+        <p key={pKey} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
+          {paragraph}
+        </p>
+      );
+    });
 
   return (
     <div className={pageClass}>
@@ -225,13 +254,13 @@ function MiniDocumentPreview({
   text,
   header,
   contactBlockText,
-}: {
+}: Readonly<{
   id: string;
   kind: "cv" | "letter";
   text: string;
   header: CvHeader;
   contactBlockText: string | null;
-}) {
+}>) {
   const modern = id === "modern";
   const compact = id === "compact";
   const lines = text
@@ -243,11 +272,11 @@ function MiniDocumentPreview({
   const contactLines = contactBlockText
     ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     : [
-        header.fullName,
-        header.title,
-        header.location,
-        header.email,
-      ].filter((line): line is string => Boolean(line));
+      header.fullName,
+      header.title,
+      header.location,
+      header.email,
+    ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
 
   return (
@@ -274,20 +303,22 @@ function MiniDocumentPreview({
       {hasContent ? (
         <div className={compact ? "space-y-1" : "space-y-1.5"}>
           {lines.map((line, index) => {
-            const heading = /^##\s+(.+)$/.exec(line);
+            const lineKey = `line-${index}`;
+            const heading = /^##\s+(.*)/.exec(line);
             const bullet = isCvBulletLine(line);
             const bulletText = cvBulletContent(line);
+
+            let lineClass = "text-[5.5px] leading-tight text-neutral-700";
+            if (heading) {
+              lineClass = "border-b border-blue-200 pb-0.5 text-[6px] font-bold uppercase text-blue-700";
+            } else if (bullet) {
+              lineClass = "pl-1 text-[5.5px] leading-tight text-neutral-700";
+            }
+
             return (
               <p
-                key={`${line}-${index}`}
-                className={[
-                  "truncate",
-                  heading
-                    ? "border-b border-blue-200 pb-0.5 text-[6px] font-bold uppercase text-blue-700"
-                    : bullet
-                      ? "pl-1 text-[5.5px] leading-tight text-neutral-700"
-                      : "text-[5.5px] leading-tight text-neutral-700",
-                ].join(" ")}
+                key={lineKey}
+                className={`truncate ${lineClass}`}
               >
                 {bullet ? (bulletText ?? line) : heading?.[1] ?? line}
               </p>
@@ -313,7 +344,7 @@ function TemplatePicker({
   text,
   header,
   contactBlockText,
-}: {
+}: Readonly<{
   label: string;
   templates: { id: string; label: string; description: string }[];
   value: string;
@@ -323,7 +354,7 @@ function TemplatePicker({
   text: string;
   header: CvHeader;
   contactBlockText: string | null;
-}) {
+}>) {
   return (
     <div className="w-full">
       <p className="text-xs font-medium uppercase text-muted-foreground">
@@ -340,11 +371,10 @@ function TemplatePicker({
               onClick={() => onChange(template.id)}
               disabled={disabled}
               title={template.description}
-              className={`rounded-md border text-left disabled:opacity-50 ${
-                selected
-                  ? "border-foreground ring-1 ring-foreground"
-                  : "hover:border-foreground/50"
-              }`}
+              className={`rounded-md border text-left disabled:opacity-50 ${selected
+                ? "border-foreground ring-1 ring-foreground"
+                : "hover:border-foreground/50"
+                }`}
             >
               <div className="pointer-events-none m-2 aspect-[1/1.414] overflow-hidden rounded-sm border bg-neutral-50">
                 <MiniDocumentPreview
@@ -357,9 +387,8 @@ function TemplatePicker({
               </div>
               <div className="px-2 pb-2">
                 <p
-                  className={`text-xs font-medium ${
-                    selected ? "text-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`text-xs font-medium ${selected ? "text-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   {template.label}
                 </p>
@@ -385,7 +414,50 @@ type DocumentPanelProps = {
   masterCvText: string | null;
 };
 
-export function DocumentPanel(props: DocumentPanelProps) {
+function AlignmentBlock({ alignment }: Readonly<{ alignment: CvAlignmentCheck | null }>) {
+  if (!alignment) return null;
+  return (
+    <div className="mt-3 rounded-md border p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">ATS keyword coverage</p>
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
+        >
+          {alignment.score}%
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        How many of the posting&apos;s requirement keywords actually appear in this CV.
+      </p>
+      <p className="mt-2 text-xs leading-relaxed">{alignment.reasoning}</p>
+      <div className="mt-2 space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {alignment.covered.map((keyword) => (
+            <span
+              key={keyword}
+              className="rounded-full border border-status-offer/40 px-2 py-0.5 text-xs text-status-offer"
+            >
+              {keyword}
+            </span>
+          ))}
+        </div>
+        {alignment.missingOwnable.length > 0 && (
+          <p className="text-xs text-status-assessment">
+            In your profile but missing from the CV — worth re-adding:
+            {alignment.missingOwnable.join(", ")}
+          </p>
+        )}
+        {alignment.missingGaps.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Not in your profile (honest gaps): {alignment.missingGaps.join(", ")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function DocumentPanel(props: Readonly<DocumentPanelProps>) {
   const panelKey = [
     props.applicationId,
     props.cv?.version ?? "no-cv",
@@ -409,7 +481,7 @@ function DocumentPanelInner({
   cvTemplate,
   clTemplate,
   masterCvText,
-}: DocumentPanelProps) {
+}: Readonly<DocumentPanelProps>) {
   const router = useRouter();
   const { toast } = useToast();
   const [generating, startGenerating] = useTransition();
@@ -522,46 +594,33 @@ function DocumentPanelInner({
     </div>
   );
 
-  const alignmentBlock = alignment && (
-    <div className="mt-3 rounded-md border p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">ATS keyword coverage</p>
-        <span
-          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
-        >
-          {alignment.score}%
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        How many of the posting&apos;s requirement keywords actually appear in
-        this CV.
-      </p>
-      <p className="mt-2 text-xs leading-relaxed">{alignment.reasoning}</p>
-      <div className="mt-2 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {alignment.covered.map((keyword) => (
-            <span
-              key={keyword}
-              className="rounded-full border border-status-offer/40 px-2 py-0.5 text-xs text-status-offer"
-            >
-              {keyword}
-            </span>
-          ))}
-        </div>
-        {alignment.missingOwnable.length > 0 && (
-          <p className="text-xs text-status-assessment">
-            In your profile but missing from the CV — worth re-adding:
-            {alignment.missingOwnable.join(", ")}
-          </p>
-        )}
-        {alignment.missingGaps.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Not in your profile (honest gaps): {alignment.missingGaps.join(", ")}
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  const alignmentBlock = <AlignmentBlock alignment={alignment} />;
+
+  let generateText = "Generate CV + cover letter";
+  if (generating) generateText = "Generating…";
+  else if (cv) generateText = "Regenerate";
+
+  let checkCoverageBtnText = "Check keyword coverage";
+  if (checking) {
+    checkCoverageBtnText = "Checking…";
+  } else if (alignment) {
+    checkCoverageBtnText = "Re-check coverage";
+  }
+
+  let cvStatusBlock = <span className="text-status-rejected">missing</span>;
+  if (cv) {
+    cvStatusBlock = (
+      <span className="text-muted-foreground">
+        v{cv.version}{cv.isFinal ? " · final" : " · draft"}
+      </span>
+    );
+  } else if (hasCvPreview) {
+    cvStatusBlock = (
+      <span className="text-muted-foreground">
+        master CV from profile
+      </span>
+    );
+  }
 
   return (
     <section className="rounded-lg border p-5">
@@ -579,31 +638,17 @@ function DocumentPanelInner({
           disabled={generating}
           className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
         >
-          {generating
-            ? "Generating…"
-            : cv
-              ? "Regenerate"
-              : "Generate CV + cover letter"}
+          {generateText}
         </button>
       </div>
 
-      {(cv || coverLetter) && (
+      {(cv || coverLetter || hasCvPreview) && (
         <div className="mt-4 space-y-8">
           <div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">
                 CV{" "}
-                {cv ? (
-                  <span className="text-muted-foreground">
-                    v{cv.version}{cv.isFinal ? " · final" : " · draft"}
-                  </span>
-                ) : hasCvPreview ? (
-                  <span className="text-muted-foreground">
-                    master CV from profile
-                  </span>
-                ) : (
-                  <span className="text-status-rejected">missing</span>
-                )}
+                {cvStatusBlock}
                 {alignment && (
                   <span
                     className={`ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
@@ -627,50 +672,49 @@ function DocumentPanelInner({
                 contactBlockText={masterCvContactBlock}
               />
             </div>
-            {hasCvPreview ? (
-              editing === "CV" ? (
-                <textarea
-                  value={cvText}
-                  onChange={(e) => setCvText(e.target.value)}
-                  rows={18}
-                  className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
-                />
-              ) : (
-                <div className="mt-2">
-                  <CvPreview
-                    text={cvText}
-                    header={header}
-                    template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
-                    contactBlockText={masterCvContactBlock}
-                  />
-                  {!cv && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Showing the imported master CV from your profile. Generate
-                      documents to create a tailored CV for this application.
-                    </p>
-                  )}
-                  {alignmentBlock}
-                  {cv && (
-                    <button
-                      type="button"
-                      onClick={handleCheckAlignment}
-                      disabled={checking}
-                      className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-                    >
-                      {checking
-                        ? "Checking…"
-                        : alignment
-                          ? "Re-check coverage"
-                          : "Check keyword coverage"}
-                    </button>
-                  )}
-                </div>
-              )
-            ) : (
+
+            {!hasCvPreview && (
               <div className="mt-3 rounded-md border border-status-rejected/30 bg-status-rejected/5 p-4 text-sm text-status-rejected">
                 No CV was saved for this application, and no imported master CV
                 was found on your profile. Upload a master CV or regenerate the
                 documents to create both the tailored CV and cover letter.
+              </div>
+            )}
+
+            {hasCvPreview && editing === "CV" && (
+              <textarea
+                value={cvText}
+                onChange={(e) => setCvText(e.target.value)}
+                rows={18}
+                className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+              />
+            )}
+
+            {hasCvPreview && editing !== "CV" && (
+              <div className="mt-2">
+                <CvPreview
+                  text={cvText}
+                  header={header}
+                  template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
+                  contactBlockText={masterCvContactBlock}
+                />
+                {!cv && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Showing the imported master CV from your profile. Generate
+                    documents to create a tailored CV for this application.
+                  </p>
+                )}
+                {alignmentBlock}
+                {cv && (
+                  <button
+                    type="button"
+                    onClick={handleCheckAlignment}
+                    disabled={checking}
+                    className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+                  >
+                    {checkCoverageBtnText}
+                  </button>
+                )}
               </div>
             )}
           </div>
