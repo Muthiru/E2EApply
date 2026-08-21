@@ -44,18 +44,22 @@ function CvPreview({
   header,
   template,
   contactBlockText,
-}: {
+}: Readonly<{
   text: string;
   header: CvHeader;
   template: CvTemplateId;
   contactBlockText: string | null;
-}) {
+}>) {
   const modern = template === "modern";
   const compact = template === "compact";
+  let paddingClass = "p-10 sm:p-12";
+  if (compact) paddingClass = "p-8 sm:p-10";
+  else if (modern) paddingClass = "";
+
   const pageClass = [
     "mx-auto min-h-[760px] w-full max-w-[760px] bg-white text-neutral-950",
     "shadow-sm ring-1 ring-border",
-    compact ? "p-8 sm:p-10" : modern ? "" : "p-10 sm:p-12",
+    paddingClass,
   ].join(" ");
 
   const contactLines = contactBlockText
@@ -73,24 +77,26 @@ function CvPreview({
 
   const contact = (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-      {detailLines.map((line, i) => {
+      {detailLines.map((line, idx) => {
+        const lineKey = `det-${idx}`;
         const href = linkHref(line);
         return href ? (
-          <a key={i} href={href} className="text-blue-700 underline underline-offset-2">
+          <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
             {line}
           </a>
         ) : (
-          <span key={i}>{line}</span>
+          <span key={lineKey}>{line}</span>
         );
       })}
     </div>
   );
 
-  const headingClass = modern
-    ? "border-b border-blue-200 pb-1 pt-5 text-xs font-bold uppercase text-blue-700 first:pt-0"
-    : compact
-      ? "border-b border-neutral-300 pb-1 pt-3 text-[11px] font-bold uppercase first:pt-0"
-      : "border-b border-neutral-300 pb-1 pt-5 text-xs font-bold uppercase first:pt-0";
+  let headingClass = "border-b border-neutral-300 pb-1 pt-5 text-xs font-bold uppercase first:pt-0";
+  if (modern) {
+    headingClass = "border-b border-blue-200 pb-1 pt-5 text-xs font-bold uppercase text-blue-700 first:pt-0";
+  } else if (compact) {
+    headingClass = "border-b border-neutral-300 pb-1 pt-3 text-[11px] font-bold uppercase first:pt-0";
+  }
 
   const bodyClass = compact
     ? "text-[11px] leading-[1.55]"
@@ -99,13 +105,14 @@ function CvPreview({
 
   const body = (
     <div className={`mt-6 ${bodySpace}`}>
-      {text.split(/\r?\n/).map((line, i) => {
+      {text.split(/\r?\n/).map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) return null;
-        const heading = /^##\s+(.+)$/.exec(trimmed);
+        const lineKey = `bl-${idx}`;
+        const heading = /^##\s+(.*)/.exec(trimmed);
         if (heading) {
           return (
-            <p key={i} className={headingClass}>
+            <p key={lineKey} className={headingClass}>
               {heading[1]}
             </p>
           );
@@ -115,7 +122,7 @@ function CvPreview({
         const href = linkHref(content);
         if (href) {
           return (
-            <p key={i} className={bodyClass}>
+            <p key={lineKey} className={bodyClass}>
               <a
                 href={href}
                 target="_blank"
@@ -129,7 +136,7 @@ function CvPreview({
         }
         if (isCvBulletLine(trimmed)) {
           return (
-            <p key={i} className={`flex gap-2 ${bodyClass}`}>
+            <p key={lineKey} className={`flex gap-2 ${bodyClass}`}>
               <span aria-hidden="true" className="mt-[0.15rem] text-blue-700">
                 •
               </span>
@@ -138,7 +145,7 @@ function CvPreview({
           );
         }
         return (
-          <p key={i} className={bodyClass}>
+          <p key={lineKey} className={bodyClass}>
             {content}
           </p>
         );
@@ -156,14 +163,15 @@ function CvPreview({
             </p>
           )}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
-            {detailLines.map((line, i) => {
+            {detailLines.map((line, idx) => {
+              const lineKey = `det2-${idx}`;
               const href = linkHref(line);
               return href ? (
-                <a key={i} href={href} className="text-blue-700 underline underline-offset-2">
+                <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
                   {line}
                 </a>
               ) : (
-                <span key={i}>{line}</span>
+                <span key={lineKey}>{line}</span>
               );
             })}
           </div>
@@ -189,10 +197,10 @@ function CvPreview({
 function LetterPreview({
   text,
   template,
-}: {
+}: Readonly<{
   text: string;
   template: "classic" | "modern" | "compact";
-}) {
+}>) {
   const modern = template === "modern";
   const compact = template === "compact";
   const pageClass = [
@@ -206,11 +214,14 @@ function LetterPreview({
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph, i) => (
-      <p key={i} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
-        {paragraph}
-      </p>
-    ));
+    .map((paragraph, idx) => {
+      const pKey = `lp-${idx}`;
+      return (
+        <p key={pKey} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
+          {paragraph}
+        </p>
+      );
+    });
 
   return (
     <div className={pageClass}>
@@ -225,13 +236,13 @@ function MiniDocumentPreview({
   text,
   header,
   contactBlockText,
-}: {
+}: Readonly<{
   id: string;
   kind: "cv" | "letter";
   text: string;
   header: CvHeader;
   contactBlockText: string | null;
-}) {
+}>) {
   const modern = id === "modern";
   const compact = id === "compact";
   const lines = text
@@ -274,20 +285,22 @@ function MiniDocumentPreview({
       {hasContent ? (
         <div className={compact ? "space-y-1" : "space-y-1.5"}>
           {lines.map((line, index) => {
-            const heading = /^##\s+(.+)$/.exec(line);
+            const lineKey = `line-${index}`;
+            const heading = /^##\s+(.*)/.exec(line);
             const bullet = isCvBulletLine(line);
             const bulletText = cvBulletContent(line);
+
+            let lineClass = "text-[5.5px] leading-tight text-neutral-700";
+            if (heading) {
+              lineClass = "border-b border-blue-200 pb-0.5 text-[6px] font-bold uppercase text-blue-700";
+            } else if (bullet) {
+              lineClass = "pl-1 text-[5.5px] leading-tight text-neutral-700";
+            }
+
             return (
               <p
-                key={`${line}-${index}`}
-                className={[
-                  "truncate",
-                  heading
-                    ? "border-b border-blue-200 pb-0.5 text-[6px] font-bold uppercase text-blue-700"
-                    : bullet
-                      ? "pl-1 text-[5.5px] leading-tight text-neutral-700"
-                      : "text-[5.5px] leading-tight text-neutral-700",
-                ].join(" ")}
+                key={lineKey}
+                className={`truncate ${lineClass}`}
               >
                 {bullet ? (bulletText ?? line) : heading?.[1] ?? line}
               </p>
@@ -313,7 +326,7 @@ function TemplatePicker({
   text,
   header,
   contactBlockText,
-}: {
+}: Readonly<{
   label: string;
   templates: { id: string; label: string; description: string }[];
   value: string;
@@ -323,7 +336,7 @@ function TemplatePicker({
   text: string;
   header: CvHeader;
   contactBlockText: string | null;
-}) {
+}>) {
   return (
     <div className="w-full">
       <p className="text-xs font-medium uppercase text-muted-foreground">
@@ -383,7 +396,7 @@ type DocumentPanelProps = {
   masterCvText: string | null;
 };
 
-export function DocumentPanel(props: DocumentPanelProps) {
+export function DocumentPanel(props: Readonly<DocumentPanelProps>) {
   const panelKey = [
     props.applicationId,
     props.cv?.version ?? "no-cv",
@@ -407,7 +420,7 @@ function DocumentPanelInner({
   cvTemplate,
   clTemplate,
   masterCvText,
-}: DocumentPanelProps) {
+}: Readonly<DocumentPanelProps>) {
   const router = useRouter();
   const { toast } = useToast();
   const [generating, startGenerating] = useTransition();
@@ -561,6 +574,25 @@ function DocumentPanelInner({
     </div>
   );
 
+  let generateText = "Generate CV + cover letter";
+  if (generating) generateText = "Generating…";
+  else if (cv) generateText = "Regenerate";
+
+  let cvStatusBlock = <span className="text-status-rejected">missing</span>;
+  if (cv) {
+    cvStatusBlock = (
+      <span className="text-muted-foreground">
+        v{cv.version}{cv.isFinal ? " · final" : " · draft"}
+      </span>
+    );
+  } else if (hasCvPreview) {
+    cvStatusBlock = (
+      <span className="text-muted-foreground">
+        master CV from profile
+      </span>
+    );
+  }
+
   return (
     <section className="rounded-lg border p-5">
       <div className="flex items-start justify-between gap-4">
@@ -577,11 +609,7 @@ function DocumentPanelInner({
           disabled={generating}
           className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
         >
-          {generating
-            ? "Generating…"
-            : cv
-              ? "Regenerate"
-              : "Generate CV + cover letter"}
+          {generateText}
         </button>
       </div>
 
@@ -591,17 +619,7 @@ function DocumentPanelInner({
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">
                 CV{" "}
-                {cv ? (
-                  <span className="text-muted-foreground">
-                    v{cv.version}{cv.isFinal ? " · final" : " · draft"}
-                  </span>
-                ) : hasCvPreview ? (
-                  <span className="text-muted-foreground">
-                    master CV from profile
-                  </span>
-                ) : (
-                  <span className="text-status-rejected">missing</span>
-                )}
+                {cvStatusBlock}
                 {alignment && (
                   <span
                     className={`ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
@@ -625,50 +643,49 @@ function DocumentPanelInner({
                 contactBlockText={masterCvContactBlock}
               />
             </div>
-            {hasCvPreview ? (
-              editing === "CV" ? (
-                <textarea
-                  value={cvText}
-                  onChange={(e) => setCvText(e.target.value)}
-                  rows={18}
-                  className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
-                />
-              ) : (
-                <div className="mt-2">
-                  <CvPreview
-                    text={cvText}
-                    header={header}
-                    template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
-                    contactBlockText={masterCvContactBlock}
-                  />
-                  {!cv && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Showing the imported master CV from your profile. Generate
-                      documents to create a tailored CV for this application.
-                    </p>
-                  )}
-                  {alignmentBlock}
-                  {cv && (
-                    <button
-                      type="button"
-                      onClick={handleCheckAlignment}
-                      disabled={checking}
-                      className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-                    >
-                      {checking
-                        ? "Checking…"
-                        : alignment
-                          ? "Re-check coverage"
-                          : "Check keyword coverage"}
-                    </button>
-                  )}
-                </div>
-              )
-            ) : (
+
+            {!hasCvPreview && (
               <div className="mt-3 rounded-md border border-status-rejected/30 bg-status-rejected/5 p-4 text-sm text-status-rejected">
                 No CV was saved for this application, and no imported master CV
                 was found on your profile. Upload a master CV or regenerate the
                 documents to create both the tailored CV and cover letter.
+              </div>
+            )}
+
+            {hasCvPreview && editing === "CV" && (
+              <textarea
+                value={cvText}
+                onChange={(e) => setCvText(e.target.value)}
+                rows={18}
+                className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+              />
+            )}
+
+            {hasCvPreview && editing !== "CV" && (
+              <div className="mt-2">
+                <CvPreview
+                  text={cvText}
+                  header={header}
+                  template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
+                  contactBlockText={masterCvContactBlock}
+                />
+                {!cv && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Showing the imported master CV from your profile. Generate
+                    documents to create a tailored CV for this application.
+                  </p>
+                )}
+                {alignmentBlock}
+                {cv && (
+                  <button
+                    type="button"
+                    onClick={handleCheckAlignment}
+                    disabled={checking}
+                    className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+                  >
+                    {checking ? "Checking…" : alignment ? "Re-check coverage" : "Check keyword coverage"}
+                  </button>
+                )}
               </div>
             )}
           </div>
