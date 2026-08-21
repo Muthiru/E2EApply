@@ -76,20 +76,21 @@ export default async function ApplicationDetailPage({
               How this job fits your master profile.
             </p>
           </div>
-          {job.matchScore !== null ? (
-            <span
-              className={`rounded-full border px-3 py-1 text-lg font-semibold ${matchBadgeClass(job.matchScore)}`}
-            >
-              {job.matchScore}%
-            </span>
-          ) : (
+          <div className="flex items-center gap-4">
+            {job.matchScore !== null && (
+              <span
+                className={`rounded-full border px-3 py-1 text-lg font-semibold ${matchBadgeClass(job.matchScore)}`}
+              >
+                {job.matchScore}%
+              </span>
+            )}
             <ScoreButton
               applicationId={application.id}
               masterCvs={application.user.profile?.masterCvs ?? []}
               selectedCvId={application.masterCvId}
               hasScore={job.matchScore !== null}
             />
-          )}
+          </div>
         </div>
 
         {job.matchScore !== null && details && (
