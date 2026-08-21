@@ -176,7 +176,7 @@ export function sanitizeCvFromAi(input: unknown): string | null {
   if (!text) return null;
   const trimmed = text.trim();
   if (trimmed.length < 80) return null;
-  if (!/^##\s+/.test(trimmed)) return null;
+  if (!/(?:^|\n)##\s+/.test(trimmed)) return null;
   return trimmed.slice(0, 12_000);
 }
 

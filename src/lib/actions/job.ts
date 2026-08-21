@@ -291,6 +291,12 @@ export async function generateApplicationDocuments(
       !cvText ? "CV" : null,
       !clText ? "cover letter" : null,
     ].filter(Boolean);
+
+    console.error("[generate-docs] Sanitization rejected the AI output!");
+    console.error("[generate-docs] CV raw output:", cvRaw);
+    console.error("[generate-docs] CL raw output:", clRaw);
+    console.error("[generate-docs] Lengths -> CV:", typeof cvRaw === 'string' ? cvRaw.length : 'not a string', "| CL:", typeof clRaw === 'string' ? clRaw.length : 'not a string');
+
     return {
       ok: false,
       error: `Document generation missed the ${missing.join(" and ")} — please retry.`,
