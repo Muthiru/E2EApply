@@ -159,12 +159,13 @@ Document (generated CV/cover letter files, versioned)
 - [x] Application dashboard: Add a "Select Master CV" dropdown next to a new manual "Rescore AI Match" button on the job view.
 - [x] Context wiring: Ensure the AI Scoring and Document Generation context fetching (`src/lib/job/context.ts`) pulls the explicit selected Master CV text, defaulting safely if none is picked.
 
-### Phase 1.6 — GitHub Repository Intelligence (planned 2026-08-21, active)
+### Phase 1.6 — GitHub Repository Intelligence (completed 2026-08-21)
 **Goal:** Supercharge AI document tailoring by scanning the candidate's Master CV for a GitHub profile link, dynamically fetching their public repositories from the GitHub API, and injecting matching repositories into the AI context as "Projects" when the job requires specific tech stacks missing from the base CV.
-- [ ] Detect GitHub URLs in `masterCv.textContent` during context assembly (`src/lib/job/context.ts`).
-- [ ] Fetch the top 15 most recently updated public repositories using the GitHub API.
-- [ ] Inject repository context (name, language, description) into the AI `profileText`.
-- [ ] Update `CV_RULES` in `src/lib/job/documents.ts` to instruct the AI to actively mine and inject these GitHub repositories into the Tailored CV if they match missing job requirements.
+- [x] Detect GitHub URLs in `masterCv.textContent` during context assembly (`src/lib/job/context.ts`).
+- [x] Fetch the top 15 most recently updated public repositories using the GitHub API.
+- [x] Inject repository context (name, language, description) into the AI `profileText`.
+- [x] Update `CV_RULES` in `src/lib/job/documents.ts` to instruct the AI to actively mine and inject these GitHub repositories into the Tailored CV if they match missing job requirements.
+*(verified 2026-08-21: 121 tests passed cleanly via `qa-verify`, duplication successfully tracked at a safe 0.40% via `qa-duplication`)*
 
 **Checkpoint 1 → 2 (kill/pivot point):**
 - ✅ **Proceed** if match scoring and document generation are genuinely saving you time/adding insight, and at least 1–2 other people (friends, forum, subreddit) have tried it and want to keep using it.
