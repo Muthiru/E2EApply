@@ -91,7 +91,7 @@ export async function addJobFromText(
         },
         {
           role: "user",
-          content: `Job posting text:\n${text.slice(0, 40_000)}${effectiveUrl ? `\n\nSource URL: ${effectiveUrl}` : ""}`,
+          content: `Job posting text:\n${text.slice(0, 40_000)}${effectiveUrl ? "\n\nSource URL: " + effectiveUrl : ""}`,
         },
       ],
       { jsonMode: true, temperature: 0.1 },
@@ -503,7 +503,7 @@ export async function checkCvKeywordCoverage(
   }
 }
 
-const MANUAL_STATUSES: ApplicationStatus[] = [
+const MANUAL_STATUSES = new Set<ApplicationStatus>([
   "APPLIED",
   "ASSESSMENT",
   "INTERVIEW",
@@ -511,7 +511,7 @@ const MANUAL_STATUSES: ApplicationStatus[] = [
   "REJECTED",
   "GHOSTED",
   "WITHDRAWN",
-];
+]);
 
 export type UpdateStatusResult = { ok: true } | { ok: false; error: string };
 
@@ -520,7 +520,7 @@ export async function updateApplicationStatus(
   status: string,
   note?: string,
 ): Promise<UpdateStatusResult> {
-  if (!MANUAL_STATUSES.includes(status as ApplicationStatus)) {
+  if (!MANUAL_STATUSES.has(status as ApplicationStatus)) {
     return { ok: false, error: "Invalid status." };
   }
   const nextStatus = status as ApplicationStatus;
