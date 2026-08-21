@@ -25,9 +25,9 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col overflow-hidden bg-background">
-      {/* Premium ambient glow background */}
+      {/* Minimal ambient glow background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-indigo-500/10 via-purple-500/10 to-blue-500/10 blur-3xl opacity-50" />
+        <div className="absolute -top-32 left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-border/20 blur-3xl opacity-50" />
       </div>
 
       <header className="relative z-10 border-b/50 bg-background/80 backdrop-blur-md">
@@ -36,7 +36,7 @@ export default async function LandingPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-transform duration-300 group-hover:scale-105">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
             </div>
-            <span className="text-lg font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+            <span className="text-lg font-bold tracking-tight text-foreground">
               E2E Apply
             </span>
           </Link>
@@ -67,7 +67,7 @@ export default async function LandingPage() {
 
         <h1 className="mt-8 max-w-4xl text-5xl font-extrabold tracking-tight sm:text-7xl">
           From discovery to outcome. <br className="hidden sm:block" />
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500">
+          <span className="text-muted-foreground/80">
             Not just another CV tool.
           </span>
         </h1>
@@ -94,7 +94,7 @@ export default async function LandingPage() {
                   Get started free
                   <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
                 </span>
-                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 opacity-0 transition-opacity duration-300 group-hover:opacity-20" />
+                <div className="absolute inset-0 -z-10 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               </button>
             </SignUpButton>
           )}
