@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CvParsedProfile } from "@/lib/cv/types";
 
 type ParseResult =
@@ -12,6 +13,7 @@ export function CvUpload({
 }: {
   onParsed: (profile: CvParsedProfile) => void;
 }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +37,7 @@ export function CvUpload({
         return;
       }
       onParsed(result.profile);
+      router.refresh();
     } catch {
       setError("Upload failed — check your connection and retry.");
     } finally {
