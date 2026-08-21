@@ -51,6 +51,7 @@ const JOB_BOARD_DOMAINS = [
   "jobs.ashbyhq.com",
   "smartrecruiters.com",
   "myworkdayjobs.com",
+  "freehire.me",
 ];
 
 type TrackedJob = {
@@ -717,9 +718,9 @@ export function parseMusePayload(payload: {
       location:
         Array.isArray(job.locations) && job.locations.length > 0
           ? job.locations
-              .map((location) => (typeof location.name === "string" ? location.name : ""))
-              .filter(Boolean)
-              .join(", ")
+            .map((location) => (typeof location.name === "string" ? location.name : ""))
+            .filter(Boolean)
+            .join(", ")
           : null,
       tags: (job.categories ?? [])
         .map((category) => (typeof category.name === "string" ? category.name : ""))
