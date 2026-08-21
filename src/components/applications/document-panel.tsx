@@ -61,14 +61,14 @@ function CvPreview({
   const contactLines = contactBlockText
     ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     : [
-        header.fullName,
-        header.title,
-        header.location,
-        header.email,
-        header.phone,
-        header.github,
-        header.linkedin,
-      ].filter((line): line is string => Boolean(line));
+      header.fullName,
+      header.title,
+      header.location,
+      header.email,
+      header.phone,
+      header.github,
+      header.linkedin,
+    ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
 
   const contact = (
@@ -243,11 +243,11 @@ function MiniDocumentPreview({
   const contactLines = contactBlockText
     ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     : [
-        header.fullName,
-        header.title,
-        header.location,
-        header.email,
-      ].filter((line): line is string => Boolean(line));
+      header.fullName,
+      header.title,
+      header.location,
+      header.email,
+    ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
 
   return (
@@ -340,11 +340,10 @@ function TemplatePicker({
               onClick={() => onChange(template.id)}
               disabled={disabled}
               title={template.description}
-              className={`rounded-md border text-left disabled:opacity-50 ${
-                selected
-                  ? "border-foreground ring-1 ring-foreground"
-                  : "hover:border-foreground/50"
-              }`}
+              className={`rounded-md border text-left disabled:opacity-50 ${selected
+                ? "border-foreground ring-1 ring-foreground"
+                : "hover:border-foreground/50"
+                }`}
             >
               <div className="pointer-events-none m-2 aspect-[1/1.414] overflow-hidden rounded-sm border bg-neutral-50">
                 <MiniDocumentPreview
@@ -357,9 +356,8 @@ function TemplatePicker({
               </div>
               <div className="px-2 pb-2">
                 <p
-                  className={`text-xs font-medium ${
-                    selected ? "text-foreground" : "text-muted-foreground"
-                  }`}
+                  className={`text-xs font-medium ${selected ? "text-foreground" : "text-muted-foreground"
+                    }`}
                 >
                   {template.label}
                 </p>
@@ -587,7 +585,7 @@ function DocumentPanelInner({
         </button>
       </div>
 
-      {(cv || coverLetter) && (
+      {(cv || coverLetter || hasCvPreview) && (
         <div className="mt-4 space-y-8">
           <div>
             <div className="flex items-center justify-between gap-3">

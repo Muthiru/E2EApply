@@ -52,7 +52,9 @@ export async function renderApplicationPdf(
   });
 
   const document = application?.documents[0];
-  if (!application || !document?.content) return null;
+  const content = document?.content ?? (type === "CV" ? application?.masterCv?.textContent : null);
+
+  if (!application || !content) return null;
   const masterCvContactBlock = extractMasterCvContactBlock(
     application.masterCv?.textContent,
   );
@@ -61,7 +63,7 @@ export async function renderApplicationPdf(
     type === "CV"
       ? await renderToBuffer(
         CvDocument({
-          text: document.content,
+          text: content,
           template: isCvTemplateId(application.cvTemplate)
             ? application.cvTemplate
             : DEFAULT_CV_TEMPLATE,
@@ -79,7 +81,7 @@ export async function renderApplicationPdf(
       )
       : await renderToBuffer(
         CoverLetterDocument({
-          text: document.content,
+          text: content,
           template: isClTemplateId(application.clTemplate)
             ? application.clTemplate
             : DEFAULT_CL_TEMPLATE,
