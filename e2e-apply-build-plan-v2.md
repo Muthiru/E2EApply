@@ -146,12 +146,12 @@ Document (generated CV/cover letter files, versioned)
 - Fixed IDE warnings in discovery logic (Cognitive complexity, String.raw, replaceAll).
 - **Major Document Tailoring Update**: Overhauled the CV/Cover Letter generation prompt rules. The AI now actively searches the candidate's entire profile (including Certifications and Projects) for evidence of "Missing requirements," dynamically injecting missing keywords if verifiable evidence is found to boost ATS Keyword Alignment scores without breaking factual integrity.
 
-### Phase 1.5 — Multiple Master CVs (planned 2026-08-21)
+### Phase 1.5 — Multiple Master CVs (planned 2026-08-21, completed 2026-08-21)
 **Goal:** Upgrade the profile system to allow candidates to manage up to 3 distinct Master CVs (e.g., "Frontend", "Backend", "Management") and select which foundation the AI uses for scoring and document tailoring per application.
-- [ ] Database schema upgrade: Move `masterCvText` and `masterCvData` out of `Profile` into a new `MasterCv` table (1-to-many up to 3). Link `Application` to an optional `MasterCv`.
-- [ ] Profile page overhaul: Build a UI to upload, preview, and delete up to 3 Master CVs instead of a single static upload.
-- [ ] Application dashboard: Add a "Select Master CV" dropdown next to a new manual "Rescore AI Match" button on the job view.
-- [ ] Context wiring: Ensure the AI Scoring and Document Generation context fetching (`src/lib/job/context.ts`) pulls the explicit selected Master CV text, defaulting safely if none is picked.
+- [x] Database schema upgrade: Move `masterCvText` and `masterCvData` out of `Profile` into a new `MasterCv` table (1-to-many up to 3). Link `Application` to an optional `MasterCv`.
+- [x] Profile page overhaul: Build a UI to upload, preview, and delete up to 3 Master CVs instead of a single static upload.
+- [x] Application dashboard: Add a "Select Master CV" dropdown next to a new manual "Rescore AI Match" button on the job view.
+- [x] Context wiring: Ensure the AI Scoring and Document Generation context fetching (`src/lib/job/context.ts`) pulls the explicit selected Master CV text, defaulting safely if none is picked.
 
 **Checkpoint 1 → 2 (kill/pivot point):**
 - ✅ **Proceed** if match scoring and document generation are genuinely saving you time/adding insight, and at least 1–2 other people (friends, forum, subreddit) have tried it and want to keep using it.
