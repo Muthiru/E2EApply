@@ -1,4 +1,4 @@
-export type CvTemplateId = "classic" | "modern" | "compact";
+export type CvTemplateId = "classic" | "modern" | "compact" | "faangpath";
 export type ClTemplateId = "classic" | "modern" | "compact";
 
 export const DEFAULT_CV_TEMPLATE: CvTemplateId = "classic";
@@ -9,6 +9,11 @@ export const CV_TEMPLATES: { id: CvTemplateId; label: string; description: strin
     id: "classic",
     label: "24B Classic",
     description: "Clean single-column ATS resume.",
+  },
+  {
+    id: "faangpath",
+    label: "FaangPath",
+    description: "The classic Times-Roman template favored by Big Tech.",
   },
   {
     id: "modern",

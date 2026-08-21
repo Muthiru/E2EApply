@@ -5,6 +5,50 @@ import type { ClTemplateId, CvTemplateId } from "@/lib/job/templates";
 
 const classicStyles = StyleSheet.create({
   page: {
+    padding: 40,
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    lineHeight: 1.5,
+    color: "#111827",
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  contact: {
+    fontSize: 9,
+    color: "#4b5563",
+    marginTop: 4,
+  },
+  contactLink: {
+    fontSize: 9,
+    color: "#1d4ed8",
+    marginTop: 4,
+    textDecoration: "underline",
+  },
+  heading: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginTop: 14,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d1d5db",
+    paddingBottom: 2,
+  },
+  bullet: {
+    marginLeft: 10,
+  },
+  paragraph: {
+    marginBottom: 4,
+  },
+  bodyLink: {
+    color: "#2563eb",
+    textDecoration: "underline",
+  },
+});
+
+const faangpathStyles = StyleSheet.create({
+  page: {
     paddingTop: 28,
     paddingBottom: 28,
     paddingLeft: 28,
@@ -164,6 +208,7 @@ type TemplateStyles = Record<string, Style>;
 
 const TEMPLATE_STYLES: Record<CvTemplateId, TemplateStyles> = {
   classic: classicStyles,
+  faangpath: faangpathStyles,
   modern: modernStyles,
   compact: compactStyles,
 };
@@ -290,30 +335,45 @@ export function CvDocument({
     <Text style={styles.name}>{nameLine}</Text>
   ) : null;
 
+  let Layout;
+  if (template === "modern") {
+    Layout = (
+      <>
+        <View style={styles.nameBand}>
+          {nameBlock}
+          {contactBlock}
+        </View>
+        <View style={styles.content}>
+          <BodyContent text={bodyText} styles={styles} />
+        </View>
+      </>
+    );
+  } else if (template === "faangpath") {
+    Layout = (
+      <>
+        <View style={(styles as TemplateStyles).headerContainer ?? {}}>
+          {nameBlock}
+          <View style={(styles as TemplateStyles).contactContainer ?? {}}>
+            {contactBlock}
+          </View>
+        </View>
+        <BodyContent text={bodyText} styles={styles} />
+      </>
+    );
+  } else {
+    Layout = (
+      <>
+        {nameBlock}
+        {contactBlock}
+        <BodyContent text={bodyText} styles={styles} />
+      </>
+    );
+  }
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {template === "modern" ? (
-          <>
-            <View style={styles.nameBand}>
-              {nameBlock}
-              {contactBlock}
-            </View>
-            <View style={styles.content}>
-              <BodyContent text={bodyText} styles={styles} />
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={(styles as TemplateStyles).headerContainer ?? {}}>
-              {nameBlock}
-              <View style={(styles as TemplateStyles).contactContainer ?? {}}>
-                {contactBlock}
-              </View>
-            </View>
-            <BodyContent text={bodyText} styles={styles} />
-          </>
-        )}
+        {Layout}
       </Page>
     </Document>
   );
