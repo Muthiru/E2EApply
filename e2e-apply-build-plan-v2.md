@@ -167,6 +167,15 @@ Document (generated CV/cover letter files, versioned)
 - [x] Update `CV_RULES` in `src/lib/job/documents.ts` to instruct the AI to actively mine and inject these GitHub repositories into the Tailored CV if they match missing job requirements.
 *(verified 2026-08-21: 121 tests passed cleanly via `qa-verify`, duplication successfully tracked at a safe 0.40% via `qa-duplication`)*
 
+### Phase 1.7 — Document Rendering Polish & AI Master CV (completed 2026-08-21)
+**Goal:** Achieve a premium "Wow" effect by vastly improving the React-PDF document style engine and introducing the ability to intelligently generate standard Master CVs directly from raw profile data.
+- [x] Integrate multiple premium React-PDF templates (Classic, Modern, FaangPath, Compact).
+- [x] Fix the UI duplication bug ensuring dynamically AI-tailored titles properly splice into the Web Template viewer without duplicating in the generic body.
+- [x] Implement an on-demand "Expert Master CV" AI re-writer for the raw user profile structure to allow PDF generation without a paired job.
+- [x] Wire the GitHub Auto-Fetcher intelligently across BOTH pipelines (native `profile.github` structure hook and raw `textContent` legacy hook).
+- [x] Complete extensive QA refactor: resolved strict TypeScript enforcement on Prisma schemas, flattened complexity metrics below score 15, and eliminated arbitrary ESLint typings.
+*(verified 2026-08-21: All TypeScript, SonarQube Linting, and Vitest test suites executing perfectly under 100% compliance)*
+
 **Checkpoint 1 → 2 (kill/pivot point):**
 - ✅ **Proceed** if match scoring and document generation are genuinely saving you time/adding insight, and at least 1–2 other people (friends, forum, subreddit) have tried it and want to keep using it.
 - 🛑 **Pivot** if the AI-generated CVs consistently need heavy rewriting, or the match score doesn't track with your own judgment. Fix the core loop before adding email/automation on top of a shaky foundation.
