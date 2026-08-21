@@ -5,45 +5,59 @@ import type { ClTemplateId, CvTemplateId } from "@/lib/job/templates";
 
 const classicStyles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontFamily: "Helvetica",
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingLeft: 28,
+    paddingRight: 28, // ~0.4 inches
+    fontFamily: "Times-Roman",
     fontSize: 10,
-    lineHeight: 1.5,
-    color: "#111827",
+    lineHeight: 1.15,
+    color: "#000000",
+  },
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 8,
   },
   name: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontFamily: "Times-Bold",
+  },
+  contactContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
   },
   contact: {
-    fontSize: 9,
-    color: "#4b5563",
-    marginTop: 4,
+    fontSize: 10,
+    color: "#000000",
   },
   contactLink: {
-    fontSize: 9,
-    color: "#1d4ed8",
-    marginTop: 4,
-    textDecoration: "underline",
+    fontSize: 10,
+    color: "#000000",
+    textDecoration: "none",
   },
   heading: {
-    fontSize: 12,
-    fontWeight: "bold",
-    marginTop: 14,
+    fontSize: 11,
+    fontFamily: "Times-Bold",
+    textTransform: "uppercase",
+    marginTop: 8,
     marginBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#d1d5db",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#000000",
     paddingBottom: 2,
   },
   bullet: {
-    marginLeft: 10,
+    marginLeft: 12,
   },
   paragraph: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   bodyLink: {
-    color: "#2563eb",
-    textDecoration: "underline",
+    color: "#000000",
+    textDecoration: "none",
   },
 });
 
@@ -291,8 +305,12 @@ export function CvDocument({
           </>
         ) : (
           <>
-            {nameBlock}
-            {contactBlock}
+            <View style={(styles as TemplateStyles).headerContainer ?? {}}>
+              {nameBlock}
+              <View style={(styles as TemplateStyles).contactContainer ?? {}}>
+                {contactBlock}
+              </View>
+            </View>
             <BodyContent text={bodyText} styles={styles} />
           </>
         )}
@@ -302,11 +320,14 @@ export function CvDocument({
 }
 const clClassicStyles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontFamily: "Helvetica",
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingLeft: 28,
+    paddingRight: 28,
+    fontFamily: "Times-Roman",
     fontSize: 10,
     lineHeight: 1.5,
-    color: "#111827",
+    color: "#000000",
   },
   paragraph: {
     marginBottom: 4,
@@ -348,11 +369,11 @@ export function CoverLetterDocument({
   text: string;
   template?: ClTemplateId;
 }>) {
-  let styles = clClassicStyles;
+  let styles: TemplateStyles = clClassicStyles as unknown as TemplateStyles;
   if (template === "modern") {
-    styles = clModernStyles;
+    styles = clModernStyles as unknown as TemplateStyles;
   } else if (template === "compact") {
-    styles = clCompactStyles;
+    styles = clCompactStyles as unknown as TemplateStyles;
   }
 
   const paragraphs = text
