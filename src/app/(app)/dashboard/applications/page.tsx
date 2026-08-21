@@ -5,24 +5,21 @@ import { matchBadgeClass, statusBadgeClass, statusDotClass, statusLabel } from "
 import { isLikelyGhosted } from "@/lib/job/tracker";
 import { JobPaste } from "@/components/applications/job-paste";
 import { JobDiscovery } from "@/components/applications/job-discovery";
-import { getDiscoveryPrefill } from "@/lib/actions/discover";
+
 import { GhostedButton } from "@/components/applications/ghosted-button";
 import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
 
 export default async function ApplicationsPage() {
   const { userId } = await auth.protect();
 
-  const [applications, prefill] = await Promise.all([
-    prisma.application.findMany({
-      where: { user: { clerkId: userId } },
-      include: {
-        job: true,
-        statusEvents: { orderBy: { createdAt: "desc" }, take: 1 },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    getDiscoveryPrefill(),
-  ]);
+  const applications = await prisma.application.findMany({
+    where: { user: { clerkId: userId } },
+    include: {
+      job: true,
+      statusEvents: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
   const now = new Date();
 
@@ -39,7 +36,7 @@ export default async function ApplicationsPage() {
 
       <JobPaste />
 
-      <JobDiscovery prefillQuery={prefill.query} />
+      <JobDiscovery />
 
       {applications.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
@@ -79,14 +76,14 @@ export default async function ApplicationsPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    {application.job.matchScore !== null ? (
+                    {application.job.matchScore === null ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(application.job.matchScore)}`}
                       >
                         {application.job.matchScore}%
                       </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
