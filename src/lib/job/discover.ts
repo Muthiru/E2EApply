@@ -116,7 +116,7 @@ export function estimateMatch(
     const needle = skill.trim().toLowerCase();
     if (!needle) return false;
     if (/^[a-z0-9+.#-]+$/.test(needle)) {
-      return new RegExp(`\\b${escapeRegExp(needle)}\\b`).test(haystack);
+      return new RegExp(String.raw`\b${escapeRegExp(needle)}\b`).test(haystack);
     }
     return haystack.includes(needle);
   });
@@ -144,7 +144,7 @@ export function estimateMatch(
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 const JOB_BOARD_RULES: { hostSuffix: string; accepts: RegExp }[] = [
@@ -165,7 +165,7 @@ const NON_JOB_PATH_PATTERNS: RegExp[] = [
   /\/blog(?:\/|$)/i,
   /\/articles?(?:\/|$)/i,
   /\/news(?:\/|$)/i,
-  /\/what-is(?:\/|-)/i,
+  /\/what-is[/-]/i,
   /\/topics?(?:\/|$)/i,
   /\/salary(?:\/|$)/i,
   /\/interview(?:\/|$)/i,
@@ -291,6 +291,12 @@ function keepCandidate(candidate: DiscoverCandidate): boolean {
   );
 }
 
+function extractJinaLinkData(line: string): { title: string; url: string } | null {
+  const link = /^\[(.+?)\]\((https?:\/\/[^)\s]+)\)$/.exec(line);
+  if (!link) return null;
+  return { title: link[1].trim(), url: link[2] };
+}
+
 export function parseJinaSearchResults(
   markdown: string,
   limit = SEARCH_LIMIT,
@@ -302,14 +308,13 @@ export function parseJinaSearchResults(
     const line = rawLine.trim();
     if (!line) continue;
 
-    const link = /^\[(.+?)\]\((https?:\/\/[^)\s]+)\)$/.exec(line);
-    if (link) {
+    const linkData = extractJinaLinkData(line);
+    if (linkData) {
       if (current) candidates.push(current);
       if (candidates.length >= limit) break;
       current = {
-        title: link[1].trim(),
+        ...linkData,
         company: null,
-        url: link[2],
         snippet: null,
         source: "jina",
         estimatedMatch: null,
@@ -318,7 +323,7 @@ export function parseJinaSearchResults(
       continue;
     }
 
-    if (current && current.snippet === null) {
+    if (current?.snippet === null) {
       current.snippet = line;
     }
   }
@@ -410,8 +415,8 @@ async function searchExa(
 
 export async function searchWithExa(
   query: string,
-  limit = SEARCH_LIMIT,
   apiKey: string,
+  limit = SEARCH_LIMIT,
 ): Promise<DiscoverCandidate[]> {
   const fetchLimit = Math.max(limit, limit * 2);
   const focused = await searchExa(query, fetchLimit, apiKey, JOB_BOARD_DOMAINS);
@@ -432,7 +437,7 @@ export async function searchJobCandidates(
 ): Promise<DiscoverCandidate[]> {
   const exaKey = process.env.EXA_API_KEY;
   const raw = exaKey
-    ? await searchWithExa(query, limit, exaKey)
+    ? await searchWithExa(query, exaKey, limit)
     : rankCandidatesByQuery(await searchWithJina(query, limit), query);
   return dedupeCandidates(raw).slice(0, limit);
 }
@@ -451,13 +456,13 @@ function stripXml(value: string): string {
   return value
     .replace(/<!\[CDATA\[|\]\]>/g, "")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
     .replace(/&#0?39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&hellip;/g, "…")
+    .replaceAll("&nbsp;", " ")
+    .replaceAll("&hellip;", "…")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -466,7 +471,7 @@ export function parseRss(xml: string): RssItem[] {
   const items: RssItem[] = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
   const extract = (tag: string, block: string): string | null => {
-    const match = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(block);
+    const match = new RegExp(String.raw`<${tag}[^>]*>([\s\S]*?)</${tag}>`, "i").exec(block);
     return match ? stripXml(match[1]) : null;
   };
 
@@ -486,7 +491,7 @@ export function extractCompanyFromRss(
   description: string,
 ): string | null {
   const fromDescription =
-    /\b(?:company|employer)\s*[:\-]\s*([^\n|•]{2,60})/i.exec(description);
+    /\b(?:company|employer)\s*[:-]\s*([^\n|•]{2,60})/i.exec(description);
   if (fromDescription) return fromDescription[1].trim();
 
   const fromAt = /^(.+?)\s+@\s+(.+)$/.exec(title);
@@ -764,7 +769,7 @@ function queryWords(query: string): string[] {
 
 function haystackIncludesWord(haystack: string, word: string): boolean {
   if (/^[a-z0-9+#.-]+$/.test(word)) {
-    return new RegExp(`\\b${escapeRegExp(word)}\\b`).test(haystack);
+    return new RegExp(String.raw`\b${escapeRegExp(word)}\b`).test(haystack);
   }
   return haystack.includes(word);
 }
@@ -892,7 +897,7 @@ export async function agentReachSearch(
 
   const settled = await Promise.allSettled([
     searchWithBoards(query, Math.max(4, Math.ceil((limit * 2) / 3))),
-    exaKey ? searchWithExa(query, limit, exaKey) : searchWithJina(query, limit),
+    exaKey ? searchWithExa(query, exaKey, limit) : searchWithJina(query, limit),
   ]);
 
   const channels: ChannelReport[] = [
