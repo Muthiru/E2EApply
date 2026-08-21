@@ -167,19 +167,20 @@ type CvHeader = {
 function BodyContent({
   text,
   styles,
-}: {
+}: Readonly<{
   text: string;
   styles: TemplateStyles;
-}) {
+}>) {
   return (
     <>
-      {text.split(/\r?\n/).map((line, i) => {
+      {text.split(/\r?\n/).map((line, idx) => {
         const trimmed = line.trim();
         if (!trimmed) return null;
-        const heading = /^##\s+(.+)$/.exec(trimmed);
+        const lineKey = `body-${idx}`;
+        const heading = /^##\s+(.*)/.exec(trimmed);
         if (heading) {
           return (
-            <Text key={i} style={styles.heading}>
+            <Text key={lineKey} style={styles.heading}>
               {heading[1]}
             </Text>
           );
@@ -189,21 +190,21 @@ function BodyContent({
         const href = linkHref(textNode);
         if (href) {
           return (
-            <Text key={i} style={[styles.paragraph, styles.bodyLink]}>
+            <Text key={lineKey} style={[styles.paragraph, styles.bodyLink]}>
               <Link src={href}>{textNode}</Link>
             </Text>
           );
         }
         if (isCvBulletLine(trimmed)) {
           return (
-            <Text key={i} style={[styles.paragraph, styles.bullet]}>
+            <Text key={lineKey} style={[styles.paragraph, styles.bullet]}>
               {"\u2022 "}
               {textNode}
             </Text>
           );
         }
         return (
-          <Text key={i} style={styles.paragraph}>
+          <Text key={lineKey} style={styles.paragraph}>
             {textNode}
           </Text>
         );
@@ -217,31 +218,51 @@ export function CvDocument({
   header,
   template = "classic",
   contactBlockText = null,
-}: {
+}: Readonly<{
   text: string;
   header: CvHeader;
   template?: CvTemplateId;
   contactBlockText?: string | null;
-}) {
+}>) {
   const styles = TEMPLATE_STYLES[template] ?? classicStyles;
 
   const contactLines = contactBlockText
     ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     : [
-        header.fullName,
-        header.title,
-        header.location,
-        header.email,
-        header.phone,
-        header.github,
-        header.linkedin,
-      ].filter((line): line is string => Boolean(line));
+      header.fullName,
+      header.title,
+      header.location,
+      header.email,
+      header.phone,
+      header.github,
+      header.linkedin,
+    ].filter((line): line is string => Boolean(line));
   const [nameLine, ...detailLines] = contactLines;
 
-  const contactBlock = detailLines.map((line, i) => {
+  let bodyText = text;
+  let tailoredTitle: string | null = null;
+  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+    tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
+    bodyText = splitBody.slice(1).join("\n");
+  }
+
+  const finalDetailLines = [...detailLines];
+  if (tailoredTitle) {
+    // Find the line that looks most like a title (usually index 0, non-contact info)
+    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
+    if (titleObjIndex !== -1) {
+      finalDetailLines[titleObjIndex] = tailoredTitle;
+    } else {
+      finalDetailLines.unshift(tailoredTitle);
+    }
+  }
+
+  const contactBlock = finalDetailLines.map((line, idx) => {
     const href = linkHref(line);
+    const lineKey = `contact-${idx}`;
     return (
-      <Text key={i} style={href ? styles.contactLink : styles.contact}>
+      <Text key={lineKey} style={href ? styles.contactLink : styles.contact}>
         {href ? (
           <Link src={href}>{line}</Link>
         ) : (
@@ -265,14 +286,14 @@ export function CvDocument({
               {contactBlock}
             </View>
             <View style={styles.content}>
-              <BodyContent text={text} styles={styles} />
+              <BodyContent text={bodyText} styles={styles} />
             </View>
           </>
         ) : (
           <>
             {nameBlock}
             {contactBlock}
-            <BodyContent text={text} styles={styles} />
+            <BodyContent text={bodyText} styles={styles} />
           </>
         )}
       </Page>
@@ -323,27 +344,29 @@ const clCompactStyles = StyleSheet.create({
 export function CoverLetterDocument({
   text,
   template = "classic",
-}: {
+}: Readonly<{
   text: string;
   template?: ClTemplateId;
-  fullName?: string | null;
-}) {
-  const styles =
-    template === "modern"
-      ? clModernStyles
-      : template === "compact"
-        ? clCompactStyles
-        : clClassicStyles;
+}>) {
+  let styles = clClassicStyles;
+  if (template === "modern") {
+    styles = clModernStyles;
+  } else if (template === "compact") {
+    styles = clCompactStyles;
+  }
 
   const paragraphs = text
     .split(/\n\s*\n/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph, i) => (
-      <Text key={i} style={styles.paragraph}>
-        {paragraph}
-      </Text>
-    ));
+    .map((paragraph, idx) => {
+      const pKey = `para-${idx}`;
+      return (
+        <Text key={pKey} style={styles.paragraph}>
+          {paragraph}
+        </Text>
+      );
+    });
 
   return (
     <Document>

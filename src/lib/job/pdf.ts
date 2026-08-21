@@ -83,7 +83,6 @@ export async function renderApplicationPdf(
           template: isClTemplateId(application.clTemplate)
             ? application.clTemplate
             : DEFAULT_CL_TEMPLATE,
-          fullName: application.user.profile?.fullName ?? null,
         }),
       );
 

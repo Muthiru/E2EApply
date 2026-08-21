@@ -8,7 +8,8 @@ export const CV_RULES = `Rules:
 - The MASTER CV block in the prompt is the source of truth. Every company, job title, date, degree, institution, skill, project name, and result MUST come from it verbatim — never alter facts, never add facts that are not in it.
 - PRESERVE the original CV's structure: keep the exact section headings and their order (given in the prompt as "CV section order"). Do not add or remove sections.
 - Do NOT write the candidate's name, contact details, location, email, phone, LinkedIn, GitHub, website, or other identity/social-profile lines in the generated CV body. Those are immutable and are rendered verbatim from the MASTER CV contact block by the app.
-- Start the output at the first CV section heading, e.g. "## Summary".
+- **Tailored Title**: The VERY FIRST line of your output MUST be a professional title (e.g. "Senior Frontend Engineer" or "Business Analyst") that is explicitly tailored to perfectly match the role being applied for, based on the job posting. Output this title on its own line, with no hash symbols or markdown forming.
+- After the tailored title, leave a blank line, then start the first CV section heading, e.g. "## Summary".
 - Tailoring means: rephrase the master CV's own words to match the posting's language where the facts genuinely support it (ATS keyword alignment), reorder skills by relevance to the posting, and surface the posting's most important keywords in the Summary's first line if the master CV supports them.
 - **Handling Missing Requirements**: Review the "Missing requirements shown to the user" in the prompt. Search the candidate's entire profile—including Certifications, Education, and Projects—for evidence that proves they have these missing skills. If you find proof (e.g., an "AWS" certification proves "AWS" skills), update the CV's Skills list, Summary, or Experience bullets to explicitly include these missing keywords using the posting's exact terminology. DO NOT lie or invent facts; only surface keywords verified by their history or certifications.
 - **GitHub Repository Injection**: Check the "GitHub Repositories (Public, dynamically fetched)" list provided in the context. If the job description expects a specific tech stack (e.g. Python, AWS, Next.js) that is missing from the candidate's standard projects, but you find a matching repository in their GitHub list, YOU MUST invent a new project bullet based on that repository to prove the required skill. Add the repository name, primary language, and description naturally as a bullet point under the Projects section.
@@ -64,7 +65,7 @@ export function splitCvSections(text: string): Record<DocumentSection, string[]>
   const lines = text.split(/\r?\n/);
   let current: DocumentSection | null = null;
   for (const line of lines) {
-    const match = /^##\s+(.+)$/.exec(line.trim());
+    const match = /^##\s+(.*)/.exec(line.trim());
     if (match) {
       const heading = match[1].toLowerCase();
       const key = CV_SECTION_ORDER.find((s) => heading.includes(s));
