@@ -8,6 +8,12 @@
 
 ---
 
+## STRICT COMMIT PROTOCOL (CRITICAL AI MEMORY RULE)
+> **MANDATORY INSTRUCTION FOR THE AI ASSISTANT:** 
+> Before executing ANY `git commit`, you MUST ALWAYS first run the verification scripts / tools (e.g., `npm run lint`, `npx tsc --noEmit`, and `npm test`). You are not allowed to commit without verifying the system remains fully intact. Never forget this rule.
+
+---
+
 ## 0. Before writing code
 
 - [ ] Check domain availability: `e2eapply.com`, `.io`, `.app`, `.co`
