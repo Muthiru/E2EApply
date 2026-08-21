@@ -174,7 +174,7 @@ Document (generated CV/cover letter files, versioned)
 
 ---
 
-## Phase 2 — Email intelligence (Effort: M)
+## Phase 2 — Email intelligence (Effort: M) (planned 2026-08-21, active)
 
 **Goal:** Auto-detect status changes from Gmail/Outlook so the tracker updates itself.
 
