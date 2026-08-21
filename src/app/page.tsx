@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 
@@ -23,6 +24,10 @@ const features = [
 export default async function LandingPage() {
   const { userId } = await auth();
 
+  if (userId) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="flex min-h-screen flex-col overflow-hidden bg-background">
       {/* Minimal ambient glow background */}
@@ -41,20 +46,11 @@ export default async function LandingPage() {
             </span>
           </Link>
           <div>
-            {userId ? (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <SignInButton mode="modal">
-                <button className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                  Sign in
-                </button>
-              </SignInButton>
-            )}
+            <SignInButton mode="modal">
+              <button className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                Sign in
+              </button>
+            </SignInButton>
           </div>
         </div>
       </header>
@@ -77,27 +73,15 @@ export default async function LandingPage() {
         </p>
 
         <div className="mt-10 mb-20 flex flex-col sm:flex-row items-center gap-4">
-          {userId ? (
-            <Link
-              href="/dashboard"
-              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-foreground px-8 py-3.5 text-base font-semibold text-background transition-all hover:scale-105 hover:shadow-lg hover:shadow-foreground/20 active:scale-95"
-            >
+          <SignUpButton mode="modal">
+            <button className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-foreground px-8 py-3.5 text-base font-semibold text-background transition-all hover:scale-105 hover:shadow-lg hover:shadow-foreground/20 active:scale-95">
               <span className="relative z-10 flex items-center gap-2">
-                Open Dashboard
+                Get started free
                 <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
               </span>
-            </Link>
-          ) : (
-            <SignUpButton mode="modal">
-              <button className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-foreground px-8 py-3.5 text-base font-semibold text-background transition-all hover:scale-105 hover:shadow-lg hover:shadow-foreground/20 active:scale-95">
-                <span className="relative z-10 flex items-center gap-2">
-                  Get started free
-                  <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14m-7-7 7 7-7 7" /></svg>
-                </span>
-                <div className="absolute inset-0 -z-10 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              </button>
-            </SignUpButton>
-          )}
+              <div className="absolute inset-0 -z-10 bg-white/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            </button>
+          </SignUpButton>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-3 text-left">
