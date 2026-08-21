@@ -11,10 +11,12 @@ import type { DiscoverCandidate } from "@/lib/job/discover";
 import { matchBadgeClass } from "@/lib/status";
 import { useToast } from "@/components/ui/toast";
 
-export function JobDiscovery({ prefillQuery }: { prefillQuery: string | null }) {
+export function JobDiscovery() {
   const router = useRouter();
   const { toast } = useToast();
-  const [query, setQuery] = useState(prefillQuery ?? "");
+  const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
+  const [workModel, setWorkModel] = useState("any");
   const [results, setResults] = useState<DiscoverCandidate[] | null>(null);
   const [usedFallback, setUsedFallback] = useState(false);
   const [searching, startSearch] = useTransition();
@@ -23,8 +25,12 @@ export function JobDiscovery({ prefillQuery }: { prefillQuery: string | null }) 
 
   const handleSearch = () => {
     setResults(null);
+    let finalQuery = query.trim();
+    if (location.trim()) finalQuery += ` in ${location.trim()}`;
+    if (workModel !== "any") finalQuery += ` (${workModel})`;
+
     startSearch(async () => {
-      const result: SearchJobsResult = await searchJobCandidatesAction(query);
+      const result: SearchJobsResult = await searchJobCandidatesAction(finalQuery);
       if (result.ok) {
         setResults(result.candidates);
         setUsedFallback(result.usedFallback);
@@ -62,28 +68,47 @@ export function JobDiscovery({ prefillQuery }: { prefillQuery: string | null }) 
       <p className="mt-1 text-xs text-muted-foreground">
         Search the web for postings, review them before they hit your tracker.
       </p>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSearch();
-          }}
-          placeholder={
-            prefillQuery
-              ? "e.g. Senior Go Engineer"
-              : "e.g. Senior Go Engineer Berlin — or build your profile for a pre-filled query"
-          }
-          className="w-full rounded-md border px-3 py-2 text-sm"
-        />
-        <button
-          type="button"
-          onClick={handleSearch}
-          disabled={searching || query.trim().length < 2}
-          className="shrink-0 rounded-md border px-4 py-2 text-sm font-medium disabled:opacity-50"
-        >
-          {searching ? "Searching…" : "Search web"}
-        </button>
+      <div className="mt-3 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
+            }}
+            placeholder="e.g. Senior Go Engineer"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={searching || query.trim().length < 2}
+            className="shrink-0 rounded-md border bg-black text-white px-4 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {searching ? "Searching…" : "Search web"}
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row items-center">
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
+            }}
+            placeholder="Location (optional, e.g. London or US)"
+            className="w-full sm:w-1/2 rounded-md border px-3 py-2 text-sm"
+          />
+          <select
+            value={workModel}
+            onChange={(e) => setWorkModel(e.target.value)}
+            className="w-full sm:w-1/3 rounded-md border px-3 py-2 text-sm"
+          >
+            <option value="any">Any Work Model</option>
+            <option value="Remote">Remote</option>
+            <option value="Onsite">Onsite</option>
+            <option value="Hybrid">Hybrid</option>
+          </select>
+        </div>
       </div>
 
       {usedFallback && results && (
