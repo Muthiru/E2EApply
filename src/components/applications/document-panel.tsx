@@ -590,15 +590,9 @@ function DocumentPanelInner({
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
-        className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
-      >
-        Download DOCX
-      </a>
-      <a
-        href={pdfHref(type)}
         className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
       >
-        Download PDF
+        Download DOCX
       </a>
     </div>
   );
@@ -638,7 +632,7 @@ function DocumentPanelInner({
           <h2 className="font-semibold">Tailored documents</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Preview the generated CV and cover letter, edit them, and download
-            the final PDF.
+            the final DOCX.
           </p>
         </div>
         <button
@@ -694,7 +688,7 @@ function DocumentPanelInner({
               <div className="mt-2">
                 <div className="mb-2 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground border border-dashed">
                   <p className="font-semibold text-foreground mb-1">Header is auto-injected from your profile</p>
-                  <p>Your name, email, phone, and links are automatically placed at the top of the PDF. You only need to edit the CV body below.</p>
+                  <p>Your name, email, phone, and links are automatically placed at the top of the document. You only need to edit the CV body below.</p>
                 </div>
                 <textarea
                   value={cvText}
