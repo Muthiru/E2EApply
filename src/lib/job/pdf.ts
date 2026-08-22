@@ -10,6 +10,8 @@ import {
   isCvTemplateId,
 } from "@/lib/job/templates";
 
+import { createDocxFromText } from "./docx";
+
 export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
   return async function handler(
     _request: Request,
@@ -17,6 +19,35 @@ export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
   ) {
     const { userId } = await auth.protect();
     const { id } = await params;
+
+    const url = new URL(_request.url);
+    const format = url.searchParams.get("format");
+
+    if (format === "docx") {
+      const application = await prisma.application.findFirst({
+        where: { id, user: { clerkId: userId } },
+        include: { job: true, documents: { where: { type } } }
+      });
+      if (!application) return new Response("Not found", { status: 404 });
+      let text = application.documents[0]?.content ?? null;
+
+      if (!text && type === "CV" && application.masterCvId) {
+        const master = await prisma.masterCv.findFirst({ where: { id: application.masterCvId } });
+        text = master?.textContent ?? null;
+      }
+      if (!text) return new Response("Document text not found", { status: 404 });
+
+      const safeCompany = (application.job?.company ?? "job").replace(/[^a-z0-9]+/gi, "-");
+      const label = type === "CV" ? "cv" : "cover-letter";
+      const buffer = await createDocxFromText(text, userId, type === "CV");
+
+      return new Response(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Disposition": `attachment; filename="${safeCompany}-${label}.docx"`
+        }
+      });
+    }
 
     const result = await renderApplicationPdf(id, type, userId);
     if (!result) return new Response("Not found", { status: 404 });

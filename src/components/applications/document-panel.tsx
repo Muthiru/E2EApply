@@ -589,6 +589,12 @@ function DocumentPanelInner({
         {saving ? "Saving…" : "Save as final"}
       </button>
       <a
+        href={pdfHref(type) + "&format=docx"}
+        className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
+      >
+        Download DOCX
+      </a>
+      <a
         href={pdfHref(type)}
         className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
       >
