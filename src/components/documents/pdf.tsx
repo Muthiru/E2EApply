@@ -67,12 +67,15 @@ const faangpathStyles = StyleSheet.create({
     textAlign: "center",
   },
   contactContainer: {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     marginTop: 3,
   },
   contact: {
     fontSize: 10,
     color: "#000000",
-    textAlign: "center",
   },
   contactLink: {
     fontSize: 10,
@@ -344,19 +347,25 @@ export function CvDocument({
     Layout = (
       <>
         <View style={(styles as TemplateStyles).headerContainer ?? {}}>
-          {nameBlock}
+          {nameLine ? (
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.name}>{nameLine}</Text>
+            </View>
+          ) : null}
           <View style={(styles as TemplateStyles).contactContainer ?? {}}>
-            <Text style={styles.contact}>
-              {finalDetailLines.map((line, idx) => {
-                const href = linkHref(line);
-                return (
-                  <Text key={`wrap-${idx}`}>
-                    {idx > 0 ? "  |  " : ""}
-                    {href ? <Link src={href} style={styles.contactLink}>{line}</Link> : line}
-                  </Text>
-                );
-              })}
-            </Text>
+            {finalDetailLines.map((line, idx) => {
+              const href = linkHref(line);
+              return (
+                <View key={`wrap-${idx}`} style={{ display: "flex", flexDirection: "row", marginBottom: 2 }}>
+                  {idx > 0 ? <Text style={styles.contact}>{"  |  "}</Text> : null}
+                  {href ? (
+                    <Text style={styles.contact}><Link src={href} style={styles.contactLink}>{line}</Link></Text>
+                  ) : (
+                    <Text style={styles.contact}>{line}</Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
         <BodyContent text={bodyText} styles={styles} />
