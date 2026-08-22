@@ -59,24 +59,20 @@ const faangpathStyles = StyleSheet.create({
     color: "#000000",
   },
   headerContainer: {
-    alignItems: "center",
     marginBottom: 8,
   },
   name: {
     fontSize: 22,
     fontFamily: "Times-Bold",
+    textAlign: "center",
   },
   contactContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 2,
+    marginTop: 3,
   },
   contact: {
     fontSize: 10,
     color: "#000000",
+    textAlign: "center",
   },
   contactLink: {
     fontSize: 10,
@@ -322,11 +318,7 @@ export function CvDocument({
     const lineKey = `contact-${idx}`;
     return (
       <Text key={lineKey} style={href ? styles.contactLink : styles.contact}>
-        {href ? (
-          <Link src={href}>{line}</Link>
-        ) : (
-          line
-        )}
+        {href ? <Link src={href}>{line}</Link> : line}
       </Text>
     );
   });
@@ -354,7 +346,17 @@ export function CvDocument({
         <View style={(styles as TemplateStyles).headerContainer ?? {}}>
           {nameBlock}
           <View style={(styles as TemplateStyles).contactContainer ?? {}}>
-            {contactBlock}
+            <Text style={styles.contact}>
+              {finalDetailLines.map((line, idx) => {
+                const href = linkHref(line);
+                return (
+                  <Text key={`wrap-${idx}`}>
+                    {idx > 0 ? "  |  " : ""}
+                    {href ? <Link src={href} style={styles.contactLink}>{line}</Link> : line}
+                  </Text>
+                );
+              })}
+            </Text>
           </View>
         </View>
         <BodyContent text={bodyText} styles={styles} />

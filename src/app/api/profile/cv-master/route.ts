@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { renderToBuffer } from "@react-pdf/renderer";
+import { CvDocument } from "@/components/documents/pdf";
+
 export async function GET(request: Request) {
   const { userId } = await auth.protect();
   const url = new URL(request.url);
@@ -49,9 +52,6 @@ export async function GET(request: Request) {
 
     if (!profile) return new Response("Profile not found.", { status: 404 });
 
-    const { renderToBuffer } = await import("@react-pdf/renderer");
-    const { CvDocument } = await import("@/components/documents/pdf");
-
     const buffer = await renderToBuffer(
       CvDocument({
         text: cv.textContent,
@@ -68,7 +68,11 @@ export async function GET(request: Request) {
       })
     );
 
-    const safeName = cv.fileName.replace(/[\r\n"]/g, "");
+    let safeName = cv.fileName.replace(/[\r\n"]/g, "");
+    if (!safeName.toLowerCase().endsWith(".pdf")) {
+      safeName += ".pdf";
+    }
+
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

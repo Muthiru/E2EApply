@@ -561,10 +561,13 @@ function DocumentPanelInner({
     });
   };
 
-  const pdfHref = (type: "CV" | "COVER_LETTER") =>
-    type === "CV"
+  const pdfHref = (type: "CV" | "COVER_LETTER") => {
+    const version = type === "CV" ? cv?.version : coverLetter?.version;
+    const base = type === "CV"
       ? `/dashboard/applications/${applicationId}/cv.pdf`
       : `/dashboard/applications/${applicationId}/cover-letter.pdf`;
+    return `${base}?v=${version || 0}`;
+  };
 
   const actionButtons = (type: "CV" | "COVER_LETTER") => (
     <div className="flex gap-2">
@@ -682,12 +685,18 @@ function DocumentPanelInner({
             )}
 
             {hasCvPreview && editing === "CV" && (
-              <textarea
-                value={cvText}
-                onChange={(e) => setCvText(e.target.value)}
-                rows={18}
-                className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
-              />
+              <div className="mt-2">
+                <div className="mb-2 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground border border-dashed">
+                  <p className="font-semibold text-foreground mb-1">Header is auto-injected from your profile</p>
+                  <p>Your name, email, phone, and links are automatically placed at the top of the PDF. You only need to edit the CV body below.</p>
+                </div>
+                <textarea
+                  value={cvText}
+                  onChange={(e) => setCvText(e.target.value)}
+                  rows={18}
+                  className="w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+                />
+              </div>
             )}
 
             {hasCvPreview && editing !== "CV" && (
