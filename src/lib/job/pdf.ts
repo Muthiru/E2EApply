@@ -25,7 +25,14 @@ export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
     if (format === "docx") {
       const application = await prisma.application.findFirst({
         where: { id, user: { clerkId: userId } },
-        include: { job: true, documents: { where: { type } } }
+        include: {
+          job: true,
+          documents: {
+            where: { type },
+            orderBy: [{ isFinal: "desc" }, { version: "desc" }],
+            take: 1
+          }
+        }
       });
       if (!application) return new Response("Not found", { status: 404 });
       let text = application.documents[0]?.content ?? null;
@@ -71,13 +78,13 @@ export async function renderApplicationPdf(
     where: { id: applicationId, user: { clerkId: userId } },
     include: {
       job: true,
+      user: { include: { profile: true } },
+      masterCv: true,
       documents: {
         where: { type },
         orderBy: [{ isFinal: "desc" }, { version: "desc" }],
         take: 1,
       },
-      masterCv: true,
-      user: { include: { profile: true } },
     },
   });
 
