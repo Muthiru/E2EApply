@@ -39,6 +39,35 @@ export type CvHeader = {
   linkedin: string | null;
 };
 
+function resolveContactLines(
+  contactBlockText: string | null,
+  header: CvHeader,
+): string[] {
+  if (contactBlockText) {
+    return contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  }
+  return [
+    header.fullName ?? "",
+    header.title ?? "",
+    header.location ?? "",
+    header.email ?? "",
+    header.phone ?? "",
+    header.github ?? "",
+    header.linkedin ?? "",
+  ];
+}
+
+function extractTitleAndBody(text: string): { tailoredTitle: string | null; bodyText: string } {
+  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+    return {
+      tailoredTitle: splitBody[0].replace(/^#+\s*/, ""),
+      bodyText: splitBody.slice(1).join("\n"),
+    };
+  }
+  return { tailoredTitle: null, bodyText: text };
+}
+
 function CvPreview({
   text,
   header,
@@ -52,9 +81,7 @@ function CvPreview({
 }>) {
   const modern = template === "modern";
   const compact = template === "compact";
-  let paddingClass = "p-10 sm:p-12";
-  if (compact) paddingClass = "p-8 sm:p-10";
-  else if (modern) paddingClass = "";
+  const paddingClass = compact ? "p-8 sm:p-10" : modern ? "" : "p-10 sm:p-12";
 
   const pageClass = [
     "mx-auto min-h-[760px] w-full max-w-[760px] bg-white text-neutral-950",
@@ -62,31 +89,11 @@ function CvPreview({
     paddingClass,
   ].join(" ");
 
-  let contactLines: string[] = [];
-  if (contactBlockText) {
-    contactLines = contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  } else {
-    contactLines = [
-      header.fullName ?? "",
-      header.title ?? "",
-      header.location ?? "",
-      header.email ?? "",
-      header.phone ?? "",
-      header.github ?? "",
-      header.linkedin ?? "",
-    ];
-  }
-
+  const contactLines = resolveContactLines(contactBlockText, header);
   const nameLine = contactLines[0];
   const detailLines = contactLines.slice(1).filter(Boolean);
 
-  let bodyText = text;
-  let tailoredTitle: string | null = null;
-  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
-    tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
-    bodyText = splitBody.slice(1).join("\n");
-  }
+  const { tailoredTitle, bodyText } = extractTitleAndBody(text);
 
   const finalDetailLines = [...detailLines];
   if (tailoredTitle) {
@@ -594,12 +601,14 @@ function DocumentPanelInner({
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
+        download
         className="rounded-md border border-foreground/30 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-neutral-100"
       >
         Download DOCX
       </a>
       <a
         href={pdfHref(type)}
+        download
         className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
       >
         Download PDF

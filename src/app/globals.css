@@ -1,45 +1,123 @@
 @import "tailwindcss";
 
+/* E2E Apply Design System */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --muted: #f5f5f5;
+  /* Professional color scheme */
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --muted: #f4f4f5;
   --muted-foreground: #737373;
   --border: #e5e5e5;
-  --accent: var(--foreground);
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  
+  /* Accent colors */
+  --accent: #0a0a0a;
   --accent-foreground: #ffffff;
-  --accent-muted: var(--muted);
+  --accent-muted: #f4f4f5;
+  --accent-hover: #171717;
+  
+  /* Primary accent for buttons - dark gray with subtle gradient */
+  --button-primary: #1a1a1a;
+  --button-primary-hover: #2a2a2a;
+  --button-secondary: #e5e5e5;
+  --button-secondary-hover: #d4d4d4;
+  
+  /* Gradient stops */
+  --gradient-start: #1a1a1a;
+  --gradient-end: #2a2a2a;
+  
+  /* Status colors */
   --status-pending: #737373;
   --status-applied: #2563eb;
   --status-assessment: #d97706;
   --status-interview: #7c3aed;
   --status-offer: #16a34a;
   --status-rejected: #dc2626;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent-muted: var(--accent-muted);
-  --color-status-pending: var(--status-pending);
-  --color-status-applied: var(--status-applied);
-  --color-status-assessment: var(--status-assessment);
-  --color-status-interview: var(--status-interview);
-  --color-status-offer: var(--status-offer);
-  --color-status-rejected: var(--status-rejected);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --status-ghosted: #6b7280;
+  
+  /* Additional UI colors */
+  --primary: #0a0a0a;
+  --primary-hover: #171717;
+  --secondary: #64748b;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #0ea5e9;
+  
+  /* Brand accent - subtle blue for emphasis */
+  --brand: #3b82f6;
+  --brand-light: #dbeafe;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improved button styles */
+button {
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Primary button style with gradient */
+.btn-primary {
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+  color: var(--accent-foreground);
+  border: 1px solid var(--button-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--button-primary-hover) 0%, #3a3a3a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Secondary button style */
+.btn-secondary {
+  background-color: var(--button-secondary);
+  color: var(--foreground);
+  border: 1px solid var(--button-secondary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--button-secondary-hover);
+  border-color: var(--button-secondary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Brand accent button */
+.btn-brand {
+  background: linear-gradient(135deg, var(--brand) 0%, #2563eb 100%);
+  color: white;
+  border: 1px solid var(--brand);
+}
+
+.btn-brand:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Improved focus states */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
 }
 
 @keyframes toast-in {
@@ -70,4 +148,17 @@ body {
 
 .dialog-enter {
   animation: dialog-in 0.15s ease-out;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
