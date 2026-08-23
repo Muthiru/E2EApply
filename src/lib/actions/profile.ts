@@ -42,6 +42,7 @@ export async function saveProfile(input: unknown): Promise<SaveProfileResult> {
     email: data.email,
     website: data.website,
     github: data.github,
+    githubToken: data.githubToken,
     linkedin: data.linkedin,
   };
 

@@ -86,6 +86,7 @@ export const profileSchema = z.object({
   email: z.email().trim().optional().nullable().or(z.literal("")),
   website: z.url().trim().optional().nullable().or(z.literal("")),
   github: z.url().trim().optional().nullable().or(z.literal("")),
+  githubToken: z.string().trim().optional().nullable().or(z.literal("")),
   linkedin: z.url().trim().optional().nullable().or(z.literal("")),
   skills: z.array(skillSchema),
   experiences: z.array(experienceSchema),
