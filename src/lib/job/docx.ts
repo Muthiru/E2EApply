@@ -1,6 +1,5 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { prisma } from "@/lib/prisma";
-import { extractMasterCvContactBlock } from "@/lib/job/documents";
 
 export async function createDocxFromText(
     text: string,
@@ -9,47 +8,57 @@ export async function createDocxFromText(
 ): Promise<Buffer> {
     const paragraphs: Paragraph[] = [];
 
+    let bodyText = text;
+    let tailoredTitle: string | null = null;
+    const splitBody = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+        tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
+        bodyText = splitBody.slice(1).join("\n");
+    }
+
     if (includeHeader) {
         const profile = await prisma.profile.findFirst({ where: { user: { clerkId: userId } } });
         if (profile) {
-            let contactBlock = "";
-            if (profile.github) {
-                const parts = profile.github.split("/");
-                const handle = parts[parts.length - 1];
-                if (handle) {
-                    const mCv = await prisma.masterCv.findFirst({
-                        where: { profileId: profile.id, textContent: { contains: handle } },
-                        orderBy: { createdAt: "desc" }
-                    });
-                    if (mCv?.textContent) {
-                        contactBlock = extractMasterCvContactBlock(mCv.textContent) ?? "";
-                    }
-                }
-            }
-            if (!contactBlock) {
-                const mCv = await prisma.masterCv.findFirst({
-                    where: { profileId: profile.id },
-                    orderBy: { createdAt: "desc" }
-                });
-                if (mCv?.textContent) {
-                    contactBlock = extractMasterCvContactBlock(mCv.textContent) ?? "";
+            const contactLines = [
+                profile.fullName ?? "",
+                profile.title ?? "",
+                profile.location ?? "",
+                profile.email ?? "",
+                profile.phone ?? "",
+                profile.github ?? "",
+                profile.linkedin ?? "",
+            ];
+
+            const nameLine = contactLines[0];
+            const detailLines = contactLines.slice(1).filter(Boolean);
+            const finalDetailLines = [...detailLines];
+
+            if (tailoredTitle) {
+                if (profile.title) {
+                    finalDetailLines[0] = tailoredTitle;
+                } else {
+                    finalDetailLines.unshift(tailoredTitle);
                 }
             }
 
-            if (contactBlock) {
-                const lines = contactBlock.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-                for (const line of lines) {
-                    paragraphs.push(new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [new TextRun({ text: line, size: 24, font: "Times New Roman" })]
-                    }));
-                }
-                paragraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+            if (nameLine) {
+                paragraphs.push(new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: nameLine, size: 32, font: "Times New Roman", bold: true })]
+                }));
+            }
+
+            if (finalDetailLines.length > 0) {
+                paragraphs.push(new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: finalDetailLines.join("  |  "), size: 22, font: "Times New Roman" })],
+                    spacing: { after: 200 }
+                }));
             }
         }
     }
 
-    const lines = text.split(/\r?\n/);
+    const lines = bodyText.split(/\r?\n/);
 
     for (const line of lines) {
         if (!line.trim()) {
