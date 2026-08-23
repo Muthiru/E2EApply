@@ -44,14 +44,15 @@ export async function createDocxFromText(
             if (nameLine) {
                 paragraphs.push(new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: nameLine, size: 32, font: "Times New Roman", bold: true })]
+                    children: [new TextRun({ text: nameLine, size: 32, font: "Times New Roman", bold: true })],
+                    spacing: { after: 80 }
                 }));
             }
 
             if (finalDetailLines.length > 0) {
                 paragraphs.push(new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: finalDetailLines.join("  |  "), size: 22, font: "Times New Roman" })],
+                    children: [new TextRun({ text: finalDetailLines.join(" | "), size: 20, font: "Times New Roman" })],
                     spacing: { after: 200 }
                 }));
             }

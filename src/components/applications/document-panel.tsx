@@ -98,7 +98,7 @@ function CvPreview({
   }
 
   const contact = (
-    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
       {finalDetailLines.map((line, idx) => {
         const lineKey = `det-${idx}`;
         const href = linkHref(line);
@@ -184,7 +184,7 @@ function CvPreview({
               {nameLine}
             </p>
           )}
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
             {finalDetailLines.map((line, idx) => {
               const lineKey = `det2-${idx}`;
               const href = linkHref(line);

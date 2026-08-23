@@ -71,7 +71,7 @@ const faangpathStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    marginTop: 3,
+    marginTop: 6,
   },
   contact: {
     fontSize: 10,
