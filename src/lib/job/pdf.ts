@@ -29,7 +29,7 @@ export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
           job: true,
           documents: {
             where: { type },
-            orderBy: [{ isFinal: "desc" }, { version: "desc" }],
+            orderBy: { version: "desc" },
             take: 1
           }
         }
@@ -82,7 +82,7 @@ export async function renderApplicationPdf(
       masterCv: true,
       documents: {
         where: { type },
-        orderBy: [{ isFinal: "desc" }, { version: "desc" }],
+        orderBy: { version: "desc" },
         take: 1,
       },
     },
