@@ -60,13 +60,18 @@ type TrackedJob = {
   title: string;
 };
 
+function normalizeUrlKey(url: string): string {
+  const lower = url.trim().toLowerCase();
+  return lower.endsWith("/") ? lower.slice(0, -1) : lower;
+}
+
 export function dedupeCandidates(
   candidates: DiscoverCandidate[],
 ): DiscoverCandidate[] {
   const seen = new Set<string>();
   const unique: DiscoverCandidate[] = [];
   for (const candidate of candidates) {
-    const key = candidate.url.toLowerCase().replace(/\/+$/, "");
+    const key = normalizeUrlKey(candidate.url);
     if (seen.has(key)) continue;
     seen.add(key);
     unique.push(candidate);
@@ -80,7 +85,7 @@ export function filterTrackedCandidates(
 ): DiscoverCandidate[] {
   const trackedUrls = new Set(
     tracked
-      .map((job) => job.sourceUrl?.trim().toLowerCase().replace(/\/+$/, ""))
+      .map((job) => job.sourceUrl ? normalizeUrlKey(job.sourceUrl) : null)
       .filter((url): url is string => Boolean(url)),
   );
   const trackedPairs = new Set(
@@ -90,8 +95,7 @@ export function filterTrackedCandidates(
   );
 
   return candidates.filter((candidate) => {
-    const url = candidate.url.trim().toLowerCase().replace(/\/+$/, "");
-    if (trackedUrls.has(url)) return false;
+    if (trackedUrls.has(normalizeUrlKey(candidate.url))) return false;
     const pair = `${candidate.company?.toLowerCase() ?? ""}|${candidate.title.toLowerCase()}`;
     return !trackedPairs.has(pair);
   });
@@ -324,7 +328,7 @@ export function parseJinaSearchResults(
     }
 
     if (current?.snippet === null) {
-      current.snippet = line;
+      current.snippet = stripHtml(line);
     }
   }
 
@@ -380,6 +384,7 @@ async function searchExa(
       query: buildJobSearchQuery(query),
       numResults: limit,
       type: "auto",
+      category: "job listing",
       ...(includeDomains?.length ? { includeDomains } : {}),
       contents: { text: { maxCharacters: 500 } },
     }),
@@ -406,10 +411,11 @@ async function searchExa(
       title: result.title as string,
       company: null,
       url: result.url as string,
-      snippet: result.text?.trim() || null,
+      snippet: result.text ? stripHtml(result.text.trim()) || null : null,
       source: "exa" as const,
       estimatedMatch: null,
       matchedSkills: [],
+      // Exa doesn't provide dates, so we can't filter by recency for web search results
     }));
 }
 
@@ -444,18 +450,25 @@ export async function searchJobCandidates(
 
 export const JOB_FEED_SOURCES: { name: string; url: string }[] = [
   { name: "We Work Remotely", url: "https://weworkremotely.com/remote-jobs.rss" },
+  { name: "RemoteOK", url: "https://remoteok.com/remote-jobs.rss" },
+  { name: "Remotive", url: "https://remotive.com/api/remote-jobs?category=software-dev&limit=50" },
+  { name: "HackerNews Jobs", url: "https://hnrss.org/jobs" },
+  { name: "ReactJobs", url: "https://reactjs.jobboard.io/jobs.rss" },
+  { name: "Python.org", url: "https://www.python.org/jobs/feed/rss/" },
+  { name: "NodeJS Jobs", url: "https://nodejsjobs.app/rss" },
 ];
 
 type RssItem = {
   title: string;
   link: string;
   description: string;
+  pubDate?: string;
 };
 
 function stripXml(value: string): string {
   return value
     .replace(/<!\[CDATA\[|\]\]>/g, "")
-    .replace(/<[^>]+>/g, " ")
+    .replace(/<[^>]{1,500}>/g, " ")
     .replaceAll("&amp;", "&")
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
@@ -463,8 +476,25 @@ function stripXml(value: string): string {
     .replace(/&#0?39;/g, "'")
     .replaceAll("&nbsp;", " ")
     .replaceAll("&hellip;", "…")
-    .replace(/\s+/g, " ")
+    .replace(/[ \t\r\n]+/g, " ")
     .trim();
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, "").trim();
+}
+
+function isRecentDate(dateString?: string): boolean {
+  if (!dateString) return true; // If no date, assume it's recent
+  
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+    return date >= ninetyDaysAgo;
+  } catch {
+    return true; // If date parsing fails, assume it's recent
+  }
 }
 
 export function parseRss(xml: string): RssItem[] {
@@ -479,28 +509,65 @@ export function parseRss(xml: string): RssItem[] {
     const title = extract("title", match[1]);
     const link = extract("link", match[1]) ?? extract("guid", match[1]);
     const description = extract("description", match[1]) ?? "";
+    const pubDate = extract("pubDate", match[1]) ?? undefined;
     if (title && link && /^https?:\/\//.test(link)) {
-      items.push({ title, link, description });
+      items.push({ title, link, description, pubDate });
     }
   }
   return items;
+}
+
+function extractFromDescriptionPrefix(description: string): string | null {
+  const lowerDesc = description.toLowerCase();
+  for (const prefix of ["company:", "company -", "employer:", "employer -"]) {
+    const idx = lowerDesc.indexOf(prefix);
+    if (idx >= 0) {
+      const matchStart = idx + prefix.length;
+      let matchEnd = matchStart;
+      while (matchEnd < description.length && matchEnd - matchStart < 60) {
+        const char = description[matchEnd];
+        if (char === "\n" || char === "•" || char === "|") break;
+        matchEnd++;
+      }
+      const candidate = description.slice(matchStart, matchEnd).trim();
+      if (candidate.length >= 2) return candidate;
+    }
+  }
+  return null;
+}
+
+function extractFromTitleAt(title: string): string | null {
+  const atIdx = title.indexOf(" @ ");
+  if (atIdx >= 0) {
+    const company = title.slice(atIdx + 3).trim();
+    if (company.length > 0) return company;
+  }
+  return null;
+}
+
+function extractFromTitleAtWord(title: string): string | null {
+  for (const separator of [" at ", "\tat ", " at\t", "\tat\t"]) {
+    const atWordIdx = title.indexOf(separator);
+    if (atWordIdx >= 0) {
+      const after = title.slice(atWordIdx + separator.length).trim();
+      if (after.length >= 2 && after.length <= 42 && /^[A-Z]/.test(after)) {
+        return after;
+      }
+      break;
+    }
+  }
+  return null;
 }
 
 export function extractCompanyFromRss(
   title: string,
   description: string,
 ): string | null {
-  const fromDescription =
-    /\b(?:company|employer)\s*[:-]\s*([^\n|•]{2,60})/i.exec(description);
-  if (fromDescription) return fromDescription[1].trim();
-
-  const fromAt = /^(.+?)\s+@\s+(.+)$/.exec(title);
-  if (fromAt) return fromAt[2].trim();
-
-  const fromAtWord = /^(.+?)\s+at\s+([A-Z].{1,40})$/.exec(title);
-  if (fromAtWord) return fromAtWord[2].trim();
-
-  return null;
+  return (
+    extractFromDescriptionPrefix(description) ??
+    extractFromTitleAt(title) ??
+    extractFromTitleAtWord(title)
+  );
 }
 
 export function filterRssItems(
@@ -509,6 +576,7 @@ export function filterRssItems(
   limit = SEARCH_LIMIT,
 ): DiscoverCandidate[] {
   return items
+    .filter((item) => isRecentDate(item.pubDate)) // Filter out old jobs
     .map((item) => {
       const score = scoreByQueryWords(
         `${item.title} ${item.description}`,
@@ -523,7 +591,7 @@ export function filterRssItems(
       title: scored.item.title,
       company: extractCompanyFromRss(scored.item.title, scored.item.description),
       url: scored.item.link,
-      snippet: scored.item.description.slice(0, 500) || null,
+      snippet: stripHtml(scored.item.description.slice(0, 500)) || null,
       source: "rss" as const,
       estimatedMatch: null,
       matchedSkills: [],
@@ -563,6 +631,7 @@ type BoardJob = {
   location: string | null;
   tags: string[];
   snippet: string | null;
+  date?: string;
 };
 
 export function parseRemoteOkPayload(payload: unknown[]): BoardJob[] {
@@ -581,9 +650,10 @@ export function parseRemoteOkPayload(payload: unknown[]): BoardJob[] {
       location:
         typeof item.location === "string" ? item.location.trim() || null : null,
       tags: [],
-      snippet: null,
+      snippet: typeof item.description === "string" ? stripHtml(item.description.trim()) || null : null,
+      date: typeof item.created_at === "string" ? item.created_at : undefined,
     }))
-    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url));
+    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url) && isRecentDate(job.date));
 }
 
 export async function fetchRemoteOkJobs(): Promise<BoardJob[]> {
@@ -605,6 +675,8 @@ export function parseRemotivePayload(payload: {
     url?: unknown;
     location?: unknown;
     tags?: unknown;
+    description?: unknown;
+    publication_date?: unknown;
   }[];
 }): BoardJob[] {
   return (payload.jobs ?? [])
@@ -622,9 +694,10 @@ export function parseRemotivePayload(payload: {
       location:
         typeof job.location === "string" ? job.location.trim() || null : null,
       tags: Array.isArray(job.tags) ? job.tags.map(String) : [],
-      snippet: null,
+      snippet: typeof job.description === "string" ? stripHtml(job.description.trim()) || null : null,
+      date: typeof job.publication_date === "string" ? job.publication_date : undefined,
     }))
-    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url));
+    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url) && isRecentDate(job.date));
 }
 
 export async function fetchRemotiveJobs(
@@ -753,6 +826,9 @@ export async function fetchMuseJobs(): Promise<BoardJob[]> {
 export function buildJobSearchQuery(query: string): string {
   const trimmed = query.trim().replace(/\s+/g, " ");
   if (!trimmed) return trimmed;
+  if (/\b(jobs?\s+in\s+|hiring\s+in\s+)/i.test(trimmed)) {
+    return trimmed;
+  }
   if (/\b(jobs?|hiring|opening|vacancy|vacancies|careers?|position|role)\b/i.test(trimmed)) {
     return trimmed;
   }
@@ -788,29 +864,130 @@ export function rankCandidatesByQuery(
   candidates: DiscoverCandidate[],
   query: string,
 ): DiscoverCandidate[] {
+  // Extract location from query if present (e.g., "jobs in poland", "in London")
+  const locationMatch = /\b(?:in|at|@)\s+([a-zA-Z\s]+)(?:\s|$)/i.exec(query);
+  const location = locationMatch ? locationMatch[1].trim().toLowerCase() : null;
+  
+  // Remove location from query for role matching
+  const queryWithoutLocation = location 
+    ? query.replace(new RegExp(`\\b(?:in|at|@)\\s+${location.replace(/\s+/g, '\\s+')}\\b`, 'i'), '').trim()
+    : query;
+
   const ranked = candidates
     .map((candidate) => {
-      const haystack = [
-        candidate.title,
-        candidate.company,
-        candidate.snippet,
-      ]
-        .filter(Boolean)
-        .join(" ");
-      const queryScore = scoreByQueryWords(haystack, query);
+      // Score title more heavily than snippet
+      const titleScore = scoreByQueryWords(candidate.title, queryWithoutLocation);
+      const snippetScore = scoreByQueryWords(
+        [candidate.company, candidate.snippet].filter(Boolean).join(" "),
+        queryWithoutLocation
+      );
+      
+      // Title matches are worth 3x snippet matches
+      const queryScore = (titleScore * 3) + snippetScore;
       let score = queryScore;
+      
+      // Boost board/rss sources
       if (candidate.source === "board" || candidate.source === "rss") score += 2;
       if (candidate.company && queryScore > 0) score += 1;
-      return { candidate, score, queryScore };
+      
+      // Location matching - strict penalty for non-matches
+      if (location) {
+        const locationHaystack = [
+          candidate.title,
+          candidate.company,
+          candidate.snippet,
+        ].filter(Boolean).join(" ").toLowerCase();
+        
+        if (locationHaystack.includes(location)) {
+          score += 3; // Strong bonus for location match
+        } else {
+          // Heavy penalty for results that don't match location
+          score -= 5;
+        }
+      }
+      
+      return { candidate, score, queryScore, titleScore };
     })
     .sort((a, b) => b.score - a.score);
 
-  const hasMatches = ranked.some((entry) => entry.queryScore > 0);
-  const filtered = hasMatches
-    ? ranked.filter((entry) => entry.queryScore > 0)
-    : ranked;
+  // Strict filtering - require title relevance (at least 1 title word match)
+  let filtered = ranked.filter((entry) => entry.titleScore >= 1);
 
-  return filtered.map(({ candidate }) => candidate);
+  // Strict location filtering when specified
+  if (location) {
+    filtered = filtered.filter((entry) => {
+      const locationHaystack = [
+        entry.candidate.title,
+        entry.candidate.company,
+        entry.candidate.snippet,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return locationHaystack.includes(location);
+    });
+  }
+
+  // If no candidates meet the strict criteria, try relaxed location filtering
+  if (filtered.length === 0 && location) {
+    filtered = ranked.filter((entry) => {
+      if (entry.titleScore < 1) return false;
+      // Allow partial location matches (e.g., "poland" matching "polish")
+      const locationHaystack = [
+        entry.candidate.title,
+        entry.candidate.company,
+        entry.candidate.snippet,
+      ].filter(Boolean).join(" ").toLowerCase();
+      
+      // Check for exact match or common variations
+      return locationHaystack.includes(location) || 
+             locationHaystack.includes(location.substring(0, 3)) || // First 3 chars
+             locationHaystack.includes(location + " ") ||
+             locationHaystack.includes(" " + location);
+    });
+  }
+
+  // Final fallback - return top results with good title matches
+  if (filtered.length === 0) {
+    const fallback = ranked.filter((entry) => entry.titleScore >= 1).slice(0, 5);
+    return fallback.map(({ candidate }) => candidate);
+  }
+
+  // Filter out likely old candidates based on content analysis
+  const recentCandidates = filtered.filter(({ candidate }) => !isLikelyOldCandidate(candidate));
+
+  // If filtering removes too many results, return the original filtered results
+  if (recentCandidates.length < Math.max(2, filtered.length / 2)) {
+    return filtered.map(({ candidate }) => candidate);
+  }
+
+  return recentCandidates.map(({ candidate }) => candidate);
+}
+
+// Helper function to check if a candidate appears to be old based on content analysis
+export function isLikelyOldCandidate(candidate: DiscoverCandidate): boolean {
+  const text = [candidate.title, candidate.company, candidate.snippet].join(" ").toLowerCase();
+  
+  // Check for indicators of old postings
+  const oldIndicators = [
+    /\b(feb|jan|march|april|may|june|july|aug|sept|oct|nov|dec)\s+\d{4}\b/i, // Specific dates in past
+    /\b(2019|2020|2021|2022|2023)\b/i, // Old years
+    /\b(urgent|immediately|asap)\b/i, // Sometimes indicates old reposts
+  ];
+  
+  // If it has specific past dates or old years, it's likely old
+  for (const pattern of oldIndicators) {
+    if (pattern.test(text)) {
+      // Check if the year is specifically in the past
+      const yearMatch = text.match(/\b(20\d{2})\b/);
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1]);
+        const currentYear = new Date().getFullYear();
+        if (year < currentYear) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  return false;
 }
 
 export function filterBoardCandidates(
