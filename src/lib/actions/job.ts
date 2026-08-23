@@ -536,7 +536,10 @@ export async function updateApplicationStatus(
   await prisma.$transaction([
     prisma.application.update({
       where: { id: applicationId },
-      data: { status: nextStatus },
+      data: {
+        status: nextStatus,
+        ...(nextStatus === "APPLIED" ? { appliedAt: new Date() } : {})
+      },
     }),
     prisma.statusEvent.create({
       data: {

@@ -37,17 +37,35 @@ async function fetchGithubReposText(profileGithub: string | null, githubToken: s
       headers["Authorization"] = `Bearer ${githubToken}`;
       url = "https://api.github.com/user/repos?sort=updated&per_page=15";
     }
-    const resp = await fetch(url, {
-      headers
-    });
-    if (resp.ok) {
-      const repos = await resp.json();
-      if (Array.isArray(repos) && repos.length > 0) {
-        return repos.map((r: { name: string; language?: string; description?: string }) =>
-          r.name + (r.language ? " (Language: " + r.language + ")" : "") + " — " + (r.description ?? "No description")
-        ).join("\n");
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      const remaining = resp.headers.get("X-RateLimit-Remaining");
+      if (remaining === "0") {
+        console.warn("[github] Rate limited — skipping repo fetch");
       }
+      return "none";
     }
+    const repos = await resp.json();
+    if (!Array.isArray(repos) || repos.length === 0) return "none";
+
+    return repos
+      .filter((r: { fork?: boolean }) => !r.fork)
+      .slice(0, 12)
+      .map((r: {
+        name: string;
+        language?: string;
+        description?: string;
+        topics?: string[];
+        stargazers_count?: number;
+      }) => {
+        const parts = [r.name];
+        if (r.language) parts.push(`Language: ${r.language}`);
+        if (r.topics && r.topics.length > 0) parts.push(`Topics: ${r.topics.join(", ")}`);
+        if (r.stargazers_count && r.stargazers_count > 0) parts.push(`${r.stargazers_count} stars`);
+        parts.push(r.description ?? "No description");
+        return parts.join(" — ");
+      })
+      .join("\n");
   } catch (e) {
     console.error("Failed to fetch Github repos", e);
   }

@@ -176,14 +176,120 @@ Document (generated CV/cover letter files, versioned)
 - [x] Complete extensive QA refactor: resolved strict TypeScript enforcement on Prisma schemas, flattened complexity metrics below score 15, and eliminated arbitrary ESLint typings.
 *(verified 2026-08-21: All TypeScript, SonarQube Linting, and Vitest test suites executing perfectly under 100% compliance)*
 
-**Checkpoint 1 → 2 (kill/pivot point):**
+### Phase 1.8 — DOCX Export & PDF Rendering Fixes (completed 2026-08-22)
+**Goal:** Introduce editable DOCX export as the primary download format and resolve critical PDF rendering bugs.
+- [x] Implement DOCX export for CVs and Cover Letters (`src/lib/job/docx.ts`) using the `docx` library with profile header injection and markdown body parsing.
+- [x] Fix FaangPath PDF template text overlap by removing flex alignment and using text alignment instead.
+- [x] Stabilize FaangPath text-stack height by migrating from nested `Text` components to row flex `View` components.
+- [x] Completely purge PDF terminology from the UI in favor of DOCX as the primary editable document standard.
+- [x] Replace native browser `confirm()` prompt on the profile page with a custom elegant dialog modal.
+*(verified 2026-08-22: 121 tests (10 files), lint 0, tsc 0, production build OK)*
+
+### Phase 1.9 — AI Title Polish, Download Consistency & GitHub PAT (completed 2026-08-23)
+**Goal:** Fix AI-generated document header issues, ensure downloads always match the web UI state, and expand GitHub intelligence with private repository support.
+- [x] Fix AI header splicing: decouple AI-tailored title extraction from the Master CV literal contact block to prevent keyword overlap in the header (`src/lib/job/pdf.ts`).
+- [x] Apply identical title-splicing extraction logic to the DOCX generator (`src/lib/job/docx.ts`) for consistent header rendering across formats.
+- [x] Strip quotation marks the AI injects around tailored CV titles.
+- [x] Forcefully expand the tailored ATS header title prompt to autonomously inject core tech-stack keywords into the contact layout flow.
+- [x] Fix downloads: strictly bind document export sorting to highest `version` DESC to perfectly match the web UI state, ensuring DOCX and PDF downloads always reflect the latest generated document.
+- [x] Fix DOCX generator to fetch the latest final database payload rather than the oldest drafted v1 document version.
+- [x] Restore dual-format download buttons giving users simultaneous access to both DOCX and PDF exports.
+- [x] Add optional GitHub Personal Access Token (`Profile.githubToken`) to enable AI scraping of private repositories during CV tailoring (schema migration `add_github_pat` applied).
+- [x] Increase vertical margin between the primary name block and contact info lines across DOCX, PDF, and web layouts for enhanced readability.
+*(verified 2026-08-23: 121 tests (10 files), lint 0, tsc 0, production build OK)*
+
+### Phase 1.10 — Pipeline Bug Fixes (active 2026-08-23)
+**Goal:** Fix three critical bugs discovered during real-world usage that undermine the core CV generation, discovery, and download pipeline.
+- [x] **Fix GitHub project injection**: Clarified CV_RULES prompt — Projects section is now the ONE EXCEPTION to "preserve structure", explicitly requiring the AI to ADD new GitHub repo bullets alongside existing projects. Previous "preserve exact structure" rule was overriding the injection instruction.
+- [x] **Fix location filter in Job Discovery**: Restructured query construction so location is placed as a leading signal (`"Senior Go Engineer jobs in London"`) instead of a trailing afterthought. Updated `buildJobSearchQuery` to recognize location-qualified queries and skip redundant "job opening hiring" suffix.
+- [x] **Fix download crash**: Added `download` attribute to DOCX and PDF `<a>` tags to force real HTTP file downloads instead of Next.js client-side navigation interception that crashed on binary responses.
+- [x] **Sonarqube cleanup**: Extracted `normalizeUrlKey` helper and rewrote `extractCompanyFromRss` to avoid regex backtracking. Refactored `createDocxFromText` (complexity 26→~10) and `CvPreview` (complexity 17→~12) into smaller helpers.
+*(verified 2026-08-23: 121 tests (10 files), lint 0, tsc 0)*
+
+### Phase 1.11 — Quality & Robustness Hardening (completed 2026-08-23)
+**Goal:** Improve the core loop quality, UX polish, and system robustness across the pipeline.
+
+**Core Loop Quality:**
+- [x] **Enrich GitHub repo fetch**: Add `topics`, `stargazers_count`, and README snippets to give the AI richer project context for CV injection.
+- [x] **PDF route error handling**: Wrap `renderToBuffer()` in try/catch to return a meaningful error instead of crashing the route.
+- [x] **Loading & error boundaries**: Add `loading.tsx` and `error.tsx` to dashboard routes for graceful loading states and error recovery.
+
+**UX Polish:**
+- [x] **Discovery prefill with location**: Populate discovery search filters from `preferences.locations` and `preferences.remoteOnly`.
+- [x] **Applications pagination**: Add cursor-based pagination to the applications list to handle 50+ applications.
+- [x] **Mask GitHub token**: Hide the PAT in the UI with a password field type.
+- [x] **Exa category filter**: Pass `category: "job listing"` to Exa search for better result relevance.
+
+**Robustness:**
+- [x] **GitHub API rate-limit handling**: Check `X-RateLimit-Remaining` header and add basic retry check.
+- [x] **Expand RSS feed sources**: Add HackerNews who-is-hiring and other feeds beyond just We Work Remotely.
+- [x] **Auto-set appliedAt**: Automatically set `appliedAt` timestamp when application status moves to `APPLIED`.
+
+**Checkpoint 1 → 2 (kill/pivot point):** [PASSED 2026-08-23]
 - ✅ **Proceed** if match scoring and document generation are genuinely saving you time/adding insight, and at least 1–2 other people (friends, forum, subreddit) have tried it and want to keep using it.
 - 🛑 **Pivot** if the AI-generated CVs consistently need heavy rewriting, or the match score doesn't track with your own judgment. Fix the core loop before adding email/automation on top of a shaky foundation.
 - 🛑 **Don't proceed to Phase 3 automation** if you haven't gotten at least a couple of non-you users on the manual tracker by this point — building automation for an audience of one is a bigger risk than the automation itself.
 
+### Phase 1.12 — UI/UX Refresh with Modern Design System (completed 2026-08-24)
+**Goal:** Refresh the entire application UI with a consistent, professional design system for better user experience and visual appeal.
+
+**Design System:**
+- [x] **Professional color scheme**: Implemented monochromatic black/gray theme with semantic status colors, replacing blue accents with neutral tones for a cleaner, more professional look.
+- [x] **CSS variables**: Defined comprehensive color palette with background, foreground, muted, border, card, accent, primary, secondary, success, warning, error, and info colors.
+- [x] **Consistent theming**: Applied new color system across all components with Tailwind CSS v4.
+
+**Navigation & Layout:**
+- [x] **Enhanced header**: Improved app header with backdrop blur, better spacing, and branded logo with subtle color accent.
+- [x] **Navigation improvements**: Added active state indicators with bottom border accent, better hover states, and smoother transitions.
+- [x] **User avatar styling**: Enhanced user button with ring effect and better visual integration.
+
+**Dashboard:**
+- [x] **Card-style stat cards**: Transformed statistics into card-style layouts with shadows, hover effects, and better typography.
+- [x] **Pipeline visualization**: Improved pipeline section with grid layout, better status badges, and larger count displays.
+- [x] **Better spacing**: Increased padding and margins throughout for better breathing room.
+
+**Applications Page:**
+- [x] **Enhanced table**: Improved applications table with hover states, better spacing, and rounded corners.
+- [x] **Better pagination**: Enhanced pagination buttons with improved styling and hover effects.
+- [x] **Empty state**: Improved empty state with better visual design and messaging.
+
+**Job Discovery:**
+- [x] **Card-style results**: Transformed job results into card-style layouts with shadows and hover effects.
+- [x] **Better inputs**: Enhanced search and filter inputs with clear buttons, focus states, and better placeholders.
+- [x] **Loading states**: Improved loading indicators with spinner animations and better messaging.
+- [x] **Filter chips**: Added clear filter chips for active filters with remove functionality.
+
+**Job Paste:**
+- [x] **Card-style layout**: Transformed job paste component into card-style with better input styling.
+- [x] **Clear buttons**: Added clear buttons for text and URL inputs.
+- [x] **Better error display**: Enhanced error message display with visual styling.
+
+**Profile Form:**
+- [x] **Card-style sections**: Transformed all profile sections into card-style layouts with shadows.
+- [x] **Better input styling**: Enhanced all form inputs with focus states, better padding, and improved accessibility.
+- [x] **Required field indicators**: Added visual indicators for required fields.
+- [x] **Better buttons**: Improved add/remove buttons with better hover states and styling.
+- [x] **Sticky save button**: Added sticky footer for save button with backdrop blur for better visibility.
+- [x] **Loading states**: Enhanced save button with spinner animation during save operations.
+
+**Accessibility:**
+- [x] **Focus states**: Improved focus indicators across all interactive elements.
+- [x] **Better labels**: Enhanced form labels with better typography and hierarchy.
+- [x] **Error states**: Improved error message display with semantic colors and better positioning.
+
+**Search Quality Improvements:**
+- [x] **Title-weighted scoring**: Implemented title-weighted relevance scoring for better search results.
+- [x] **Strict location filtering**: Added strict location matching with fallback behavior.
+- [x] **Date filtering**: Implemented date filtering to exclude stale job postings (older than 90 days).
+- [x] **HTML stripping**: Fixed HTML rendering artifacts in job descriptions.
+- [x] **RSS date parsing**: Added date extraction from RSS feeds for freshness filtering.
+- [x] **Board date parsing**: Added date extraction from job board payloads (RemoteOK, Remotive, Jobicy, The Muse).
+
+*(verified 2026-08-24: 128 tests (10 files), lint 0, tsc 0, production build OK)*
+
 ---
 
-## Phase 2 — Email intelligence (Effort: M) (planned 2026-08-21, active)
+## Phase 2 — Email intelligence (Effort: M) (active 2026-08-23)
 
 **Goal:** Auto-detect status changes from Gmail/Outlook so the tracker updates itself.
 

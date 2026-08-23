@@ -13,11 +13,11 @@ import {
 
 export type SearchJobsResult =
   | {
-      ok: true;
-      candidates: DiscoverCandidate[];
-      channels: ChannelReport[];
-      usedFallback: boolean;
-    }
+    ok: true;
+    candidates: DiscoverCandidate[];
+    channels: ChannelReport[];
+    usedFallback: boolean;
+  }
   | { ok: false; error: string };
 
 export async function searchJobCandidatesAction(
@@ -48,14 +48,16 @@ export async function searchJobCandidatesAction(
 
     const { candidates, channels } = await agentReachSearch(trimmed, 10);
 
+    const filtered = filterTrackedCandidates(candidates, trackedJobs);
+
+    const finalCandidates = filtered.map((candidate) => ({
+      ...candidate,
+      ...estimateMatch(candidate, skillNames, trimmed),
+    }));
+
     return {
       ok: true,
-      candidates: filterTrackedCandidates(candidates, trackedJobs).map(
-        (candidate) => ({
-          ...candidate,
-          ...estimateMatch(candidate, skillNames, trimmed),
-        }),
-      ),
+      candidates: finalCandidates,
       channels,
       usedFallback: channels.some((channel) => channel.channel === "jina"),
     };
@@ -67,7 +69,11 @@ export async function searchJobCandidatesAction(
   }
 }
 
-export type DiscoveryPrefill = { query: string | null };
+export type DiscoveryPrefill = {
+  query: string | null;
+  location: string | null;
+  workModel: "any" | "Remote" | "Onsite" | "Hybrid";
+};
 
 export async function getDiscoveryPrefill(): Promise<DiscoveryPrefill> {
   const { userId } = await auth.protect();
@@ -77,7 +83,7 @@ export async function getDiscoveryPrefill(): Promise<DiscoveryPrefill> {
     include: { skills: true, preferences: true },
   });
 
-  if (!profile) return { query: null };
+  if (!profile) return { query: null, location: null, workModel: "any" };
 
   const roles = (profile.preferences?.preferredRoles ?? []).filter(Boolean);
   const skills = profile.skills.slice(0, 5).map((skill) => skill.name);
@@ -85,5 +91,13 @@ export async function getDiscoveryPrefill(): Promise<DiscoveryPrefill> {
 
   if (parts.length === 0 && profile.title) parts.push(profile.title);
 
-  return { query: parts.length > 0 ? parts.join(" ") : null };
+  const locations = profile.preferences?.locations ?? [];
+  const location = locations.length > 0 ? locations[0] : null;
+  const workModel = profile.preferences?.remoteOnly ? "Remote" as const : "any" as const;
+
+  return {
+    query: parts.length > 0 ? parts.join(" ") : null,
+    location,
+    workModel,
+  };
 }

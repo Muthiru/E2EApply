@@ -25,10 +25,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="mt-2 text-base text-muted-foreground">
             {profile
               ? `${profile.fullName ?? "Welcome back"} — here's where your job search stands.`
               : "Welcome — build your master candidate profile to get started."}
@@ -37,14 +37,14 @@ export default async function DashboardPage() {
         {profile ? (
           <Link
             href="/profile"
-            className="shrink-0 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/50"
+            className="shrink-0 inline-flex items-center justify-center rounded-lg border border-border px-5 py-2.5 text-sm font-medium transition-all hover:bg-[#f4f4f5] hover:border-foreground/20"
           >
             Edit profile
           </Link>
         ) : (
           <Link
             href="/profile"
-            className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground"
+            className="shrink-0 inline-flex items-center justify-center rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-blue-800 shadow-md hover:shadow-lg"
           >
             Build profile
           </Link>
@@ -66,20 +66,20 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <section className="rounded-lg border p-6">
-        <h2 className="text-base font-semibold">Pipeline</h2>
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-foreground">Pipeline</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Where your applications stand right now.
         </p>
-        <div className="mt-4 flex flex-wrap gap-x-8 gap-y-4">
+        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {(["PENDING", "APPLIED", "ASSESSMENT", "INTERVIEW", "OFFER", "REJECTED"] as const).map(
             (status) => (
-              <div key={status} className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${statusDotClass(status)}`} />
-                <span className="text-sm text-muted-foreground">
+              <div key={status} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30 border border-border">
+                <span className={`h-3 w-3 rounded-full ${statusDotClass(status)}`} />
+                <span className="text-sm font-medium text-foreground">
                   {statusLabel(status)}
                 </span>
-                <span className="text-sm font-semibold">
+                <span className="text-2xl font-bold text-foreground">
                   {pipelineCount[status] ?? 0}
                 </span>
               </div>
@@ -88,23 +88,23 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-lg border p-6">
-        <h2 className="text-base font-semibold">Next step</h2>
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-foreground">Next step</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {profile
             ? "Paste your first job posting — job analysis, match score, and tailored documents are on the way. Track everything manually in the meantime."
             : "Build your master candidate profile first — match scores, CVs, and cover letters are all generated from it."}
         </p>
-        <div className="mt-4 flex gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/dashboard/applications"
-            className="rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/50"
+            className="inline-flex items-center justify-center rounded-lg border border-border px-5 py-2.5 text-sm font-medium transition-all hover:bg-[#f4f4f5] hover:border-foreground/20"
           >
             View applications
           </Link>
           <Link
             href={profile ? "/dashboard/applications" : "/profile"}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-blue-800 shadow-md hover:shadow-lg"
           >
             {profile ? "Track an application" : "Build profile"}
           </Link>
@@ -126,9 +126,9 @@ function StatCard({
   href?: string;
 }) {
   const body = (
-    <div className="rounded-lg border p-5 transition-colors hover:border-accent">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/30">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">{value}</p>
       {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
     </div>
   );

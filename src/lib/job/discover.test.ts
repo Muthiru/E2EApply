@@ -14,6 +14,7 @@ import {
   buildJobSearchQuery,
   rankCandidatesByQuery,
   scoreByQueryWords,
+  isLikelyOldCandidate,
   type DiscoverCandidate,
 } from "./discover";
 
@@ -229,6 +230,18 @@ describe("buildJobSearchQuery", () => {
   it("leaves queries that already mention jobs alone", () => {
     expect(buildJobSearchQuery("remote backend jobs")).toBe("remote backend jobs");
   });
+
+  it("leaves queries with location keywords alone", () => {
+    expect(buildJobSearchQuery("Senior Go Engineer jobs in Berlin")).toBe(
+      "Senior Go Engineer jobs in Berlin",
+    );
+  });
+
+  it("leaves queries with hiring keywords alone", () => {
+    expect(buildJobSearchQuery("Senior Go Engineer hiring")).toBe(
+      "Senior Go Engineer hiring",
+    );
+  });
 });
 
 describe("scoreByQueryWords", () => {
@@ -261,6 +274,159 @@ describe("rankCandidatesByQuery", () => {
 
     expect(ranked).toHaveLength(1);
     expect(ranked[0].title).toBe("Senior Go Engineer");
+  });
+
+  it("requires title relevance (at least 1 title word match)", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "Acme",
+        url: "https://example.com/jobs/1",
+        snippet: "Build systems.",
+        source: "jina",
+      }),
+      baseCandidate({
+        title: "Go Developer",
+        company: "TechCorp",
+        url: "https://example.com/jobs/2",
+        snippet: "Build backend services in Go.",
+        source: "board",
+      }),
+      baseCandidate({
+        title: "Marketing Manager",
+        company: "SalesCo",
+        url: "https://example.com/jobs/3",
+        snippet: "We need Go developers for marketing.",
+        source: "jina",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "Go engineer");
+
+    // Only title matches should be included
+    expect(ranked.length).toBeGreaterThan(0);
+    expect(ranked.every(c => c.title.toLowerCase().includes("go") || c.title.toLowerCase().includes("engineer"))).toBe(true);
+  });
+
+  it("strictly filters by location when specified", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Full Stack Developer",
+        company: "TechCorp Poland",
+        url: "https://example.com/jobs/1",
+        snippet: "Remote role based in Poland.",
+        source: "board",
+      }),
+      baseCandidate({
+        title: "Full Stack Developer",
+        company: "GlobalTech",
+        url: "https://example.com/jobs/2",
+        snippet: "Remote role worldwide.",
+        source: "jina",
+      }),
+      baseCandidate({
+        title: "Billing Officer",
+        company: "Nepal Corp",
+        url: "https://example.com/jobs/3",
+        snippet: "Finance role in Nepal.",
+        source: "jina",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "full stack developer jobs in poland");
+
+    // Should only return Poland results
+    expect(ranked.length).toBeGreaterThan(0);
+    expect(ranked.every(c => {
+      const haystack = [c.title, c.company, c.snippet].join(" ").toLowerCase();
+      return haystack.includes("poland");
+    })).toBe(true);
+  });
+
+  it("excludes results without location match when location is specified", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "Berlin Tech",
+        url: "https://example.com/jobs/1",
+        snippet: "Based in Berlin, Germany.",
+        source: "board",
+      }),
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "London Tech",
+        url: "https://example.com/jobs/2",
+        snippet: "Based in London, UK.",
+        source: "board",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "senior engineer jobs in london");
+
+    // Only London result should be included
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].company).toBe("London Tech");
+  });
+
+  it("weights title matches 3x higher than snippet matches", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Go Developer",
+        company: "Acme",
+        url: "https://example.com/jobs/1",
+        snippet: "Backend services.",
+        source: "jina",
+      }),
+      baseCandidate({
+        title: "Backend Developer",
+        company: "TechCorp",
+        url: "https://example.com/jobs/2",
+        snippet: "Build backend services in Go.",
+        source: "board",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "Go");
+
+    // Title match should rank higher than snippet match
+    expect(ranked.length).toBeGreaterThan(0);
+    expect(ranked[0].title).toBe("Go Developer");
+  });
+
+  it("filters out candidates with old dates in content", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "TechCorp",
+        url: "https://example.com/jobs/1",
+        snippet: "Position available since February 2023.",
+        source: "jina",
+      }),
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "NewTech",
+        url: "https://example.com/jobs/2",
+        snippet: "New position opening August 2026.",
+        source: "board",
+      }),
+      baseCandidate({
+        title: "Senior Engineer",
+        company: "FreshTech",
+        url: "https://example.com/jobs/3",
+        snippet: "Recent position.",
+        source: "board",
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "senior engineer");
+
+    // Should filter out the old 2023 position (fallback won't kick in with 3 candidates)
+    expect(ranked.every(c => !c.snippet?.toLowerCase().includes("2023"))).toBe(true);
+    
+    // Test the helper function directly
+    expect(isLikelyOldCandidate(candidates[0])).toBe(true);
+    expect(isLikelyOldCandidate(candidates[1])).toBe(false);
+    expect(isLikelyOldCandidate(candidates[2])).toBe(false);
   });
 });
 
