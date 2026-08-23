@@ -2,7 +2,6 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { CvDocument, CoverLetterDocument } from "@/components/documents/pdf";
-import { extractMasterCvContactBlock } from "@/lib/job/documents";
 import {
   DEFAULT_CL_TEMPLATE,
   DEFAULT_CV_TEMPLATE,
@@ -86,9 +85,6 @@ export async function renderApplicationPdf(
   const content = document?.content ?? (type === "CV" ? application?.masterCv?.textContent : null);
 
   if (!application || !content) return null;
-  const masterCvContactBlock = extractMasterCvContactBlock(
-    application.masterCv?.textContent,
-  );
 
   const buffer =
     type === "CV"
@@ -107,7 +103,7 @@ export async function renderApplicationPdf(
             github: application.user.profile?.github ?? null,
             linkedin: application.user.profile?.linkedin ?? null,
           },
-          contactBlockText: masterCvContactBlock,
+          contactBlockText: null,
         }),
       )
       : await renderToBuffer(

@@ -62,18 +62,23 @@ function CvPreview({
     paddingClass,
   ].join(" ");
 
-  const contactLines = contactBlockText
-    ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    : [
-      header.fullName,
-      header.title,
-      header.location,
-      header.email,
-      header.phone,
-      header.github,
-      header.linkedin,
-    ].filter((line): line is string => Boolean(line));
-  const [nameLine, ...detailLines] = contactLines;
+  let contactLines: string[] = [];
+  if (contactBlockText) {
+    contactLines = contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  } else {
+    contactLines = [
+      header.fullName ?? "",
+      header.title ?? "",
+      header.location ?? "",
+      header.email ?? "",
+      header.phone ?? "",
+      header.github ?? "",
+      header.linkedin ?? "",
+    ];
+  }
+
+  const nameLine = contactLines[0];
+  const detailLines = contactLines.slice(1).filter(Boolean);
 
   let bodyText = text;
   let tailoredTitle: string | null = null;
@@ -85,9 +90,8 @@ function CvPreview({
 
   const finalDetailLines = [...detailLines];
   if (tailoredTitle) {
-    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
-    if (titleObjIndex !== -1) {
-      finalDetailLines[titleObjIndex] = tailoredTitle;
+    if (!contactBlockText && header.title) {
+      finalDetailLines[0] = tailoredTitle;
     } else {
       finalDetailLines.unshift(tailoredTitle);
     }
@@ -672,7 +676,7 @@ function DocumentPanelInner({
                 kind="cv"
                 text={cvText}
                 header={header}
-                contactBlockText={masterCvContactBlock}
+                contactBlockText={null}
               />
             </div>
 
@@ -705,7 +709,7 @@ function DocumentPanelInner({
                   text={cvText}
                   header={header}
                   template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
-                  contactBlockText={masterCvContactBlock}
+                  contactBlockText={null}
                 />
                 {!cv && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -750,7 +754,7 @@ function DocumentPanelInner({
                   kind="letter"
                   text={clText}
                   header={header}
-                  contactBlockText={masterCvContactBlock}
+                  contactBlockText={null}
                 />
               </div>
               {editing === "COVER_LETTER" ? (
