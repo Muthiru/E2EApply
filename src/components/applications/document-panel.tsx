@@ -594,9 +594,15 @@ function DocumentPanelInner({
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
-        className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
+        className="rounded-md border border-foreground/30 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-neutral-100"
       >
         Download DOCX
+      </a>
+      <a
+        href={pdfHref(type)}
+        className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
+      >
+        Download PDF
       </a>
     </div>
   );
@@ -636,7 +642,7 @@ function DocumentPanelInner({
           <h2 className="font-semibold">Tailored documents</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Preview the generated CV and cover letter, edit them, and download
-            the final DOCX.
+            the final documents.
           </p>
         </div>
         <button
