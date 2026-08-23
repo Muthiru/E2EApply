@@ -59,20 +59,19 @@ const faangpathStyles = StyleSheet.create({
     color: "#000000",
   },
   headerContainer: {
-    alignItems: "center",
     marginBottom: 8,
   },
   name: {
     fontSize: 22,
     fontFamily: "Times-Bold",
+    textAlign: "center",
   },
   contactContainer: {
+    display: "flex",
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 2,
+    marginTop: 6,
   },
   contact: {
     fontSize: 10,
@@ -285,33 +284,43 @@ export function CvDocument({
 }>) {
   const styles = TEMPLATE_STYLES[template] ?? classicStyles;
 
-  const contactLines = contactBlockText
-    ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    : [
-      header.fullName,
-      header.title,
-      header.location,
-      header.email,
-      header.phone,
-      header.github,
-      header.linkedin,
-    ].filter((line): line is string => Boolean(line));
-  const [nameLine, ...detailLines] = contactLines;
+  let contactLines: string[] = [];
+  if (contactBlockText) {
+    contactLines = contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  } else {
+    // Preserve exact layout positions for splicing
+    contactLines = [
+      header.fullName ?? "",
+      header.title ?? "",
+      header.location ?? "",
+      header.email ?? "",
+      header.phone ?? "",
+      header.github ?? "",
+      header.linkedin ?? "",
+    ];
+  }
+
+  const nameLine = contactLines[0];
+  const detailLines = contactLines.slice(1).filter(Boolean);
 
   let bodyText = text;
   let tailoredTitle: string | null = null;
-  const splitBody = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if (splitBody.length > 0 && !splitBody[0].startsWith("##") && !splitBody[0].toLowerCase().includes("summary")) {
+  const splitBody = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (
+    splitBody.length > 0 &&
+    !splitBody[0].startsWith("##") &&
+    !splitBody[0].toLowerCase().includes("summary")
+  ) {
     tailoredTitle = splitBody[0].replace(/^#+\s*/, "");
     bodyText = splitBody.slice(1).join("\n");
   }
 
   const finalDetailLines = [...detailLines];
   if (tailoredTitle) {
-    // Find the line that looks most like a title (usually index 0, non-contact info)
-    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
-    if (titleObjIndex !== -1) {
-      finalDetailLines[titleObjIndex] = tailoredTitle;
+    if (!contactBlockText && header.title) {
+      // We know exactly where the title is in our array (it's the first element before filtering if it existed)
+      // After filter(Boolean), if header.title existed, it's at index 0.
+      finalDetailLines[0] = tailoredTitle;
     } else {
       finalDetailLines.unshift(tailoredTitle);
     }
@@ -322,11 +331,7 @@ export function CvDocument({
     const lineKey = `contact-${idx}`;
     return (
       <Text key={lineKey} style={href ? styles.contactLink : styles.contact}>
-        {href ? (
-          <Link src={href}>{line}</Link>
-        ) : (
-          line
-        )}
+        {href ? <Link src={href}>{line}</Link> : line}
       </Text>
     );
   });
@@ -352,9 +357,25 @@ export function CvDocument({
     Layout = (
       <>
         <View style={(styles as TemplateStyles).headerContainer ?? {}}>
-          {nameBlock}
+          {nameLine ? (
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.name}>{nameLine}</Text>
+            </View>
+          ) : null}
           <View style={(styles as TemplateStyles).contactContainer ?? {}}>
-            {contactBlock}
+            {finalDetailLines.map((line, idx) => {
+              const href = linkHref(line);
+              return (
+                <View key={`wrap-${idx}`} style={{ display: "flex", flexDirection: "row", marginBottom: 2 }}>
+                  {idx > 0 ? <Text style={styles.contact}>{"  |  "}</Text> : null}
+                  {href ? (
+                    <Text style={styles.contact}><Link src={href} style={styles.contactLink}>{line}</Link></Text>
+                  ) : (
+                    <Text style={styles.contact}>{line}</Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
         <BodyContent text={bodyText} styles={styles} />

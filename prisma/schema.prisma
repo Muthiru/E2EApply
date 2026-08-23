@@ -46,9 +46,9 @@ model User {
 }
 
 model Profile {
-  id             String            @id @default(cuid())
-  userId         String            @unique
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   fullName       String?
   title          String?
   summary        String?
@@ -58,6 +58,7 @@ model Profile {
   website        String?
   github         String?
   linkedin       String?
+  githubToken    String?
   masterCvs      MasterCv[]
   skills         Skill[]
   experiences    WorkExperience[]
@@ -65,25 +66,25 @@ model Profile {
   projects       Project[]
   certifications Certification[]
   preferences    ProfilePreferences?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 }
 
 model MasterCv {
-  id             String   @id @default(cuid())
-  profileId      String
-  profile        Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   name           String
   fileName       String
   fileData       Bytes
   textContent    String
   cvSectionOrder String[]
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 
-  applications   Application[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
 }
 
 model Skill {
@@ -140,98 +141,98 @@ model Project {
 }
 
 model Certification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   profileId String
-  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   name      String
   issuer    String?
   date      DateTime?
   url       String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 model ProfilePreferences {
-  id              String  @id @default(cuid())
-  profileId       String  @unique
-  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  profileId       String   @unique
+  profile         Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   preferredRoles  String[]
   locations       String[]
-  remoteOnly      Boolean @default(false)
+  remoteOnly      Boolean  @default(false)
   salaryFloor     Int?
   minMatchPercent Int?
 }
 
 model Job {
-  id            String        @id @default(cuid())
-  sourceUrl     String?
-  rawText       String?
-  source        String?
-  title         String
-  company       String?
-  location      String?
-  description   String?
-  requirements  String?
-  salaryMin     Int?
-  salaryMax     Int?
-  matchScore    Int?
-  matchDetails  Json?
+  id             String        @id @default(cuid())
+  sourceUrl      String?
+  rawText        String?
+  source         String?
+  title          String
+  company        String?
+  location       String?
+  description    String?
+  requirements   String?
+  salaryMin      Int?
+  salaryMax      Int?
+  matchScore     Int?
+  matchDetails   Json?
   matchReasoning String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  applications  Application[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  applications   Application[]
 
   @@index([company, title])
 }
 
 model Application {
-  id                    String            @id @default(cuid())
-  userId                String
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobId                 String
-  job                   Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  status                ApplicationStatus @default(PENDING)
+  id                      String            @id @default(cuid())
+  userId                  String
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId                   String
+  job                     Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status                  ApplicationStatus @default(PENDING)
   matchScoreAtApplication Int?
-  cvTemplate             String?          @default("classic")
-  clTemplate             String?          @default("classic")
-  masterCvId            String?
-  masterCv              MasterCv?         @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
-  notes                 String?
-  appliedAt             DateTime?
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  statusEvents          StatusEvent[]
-  documents             Document[]
+  cvTemplate              String?           @default("classic")
+  clTemplate              String?           @default("classic")
+  masterCvId              String?
+  masterCv                MasterCv?         @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
+  notes                   String?
+  appliedAt               DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  statusEvents            StatusEvent[]
+  documents               Document[]
 
   @@unique([userId, jobId])
 }
 
 model StatusEvent {
-  id            String            @id @default(cuid())
+  id            String             @id @default(cuid())
   applicationId String
-  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   from          ApplicationStatus?
   to            ApplicationStatus
-  source        StatusSource      @default(MANUAL)
+  source        StatusSource       @default(MANUAL)
   confidence    ConfidenceLevel?
   note          String?
-  createdAt     DateTime          @default(now())
+  createdAt     DateTime           @default(now())
 
   @@index([applicationId, createdAt])
 }
 
 model Document {
-  id              String         @id @default(cuid())
-  applicationId   String?
-  application     Application?   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  type            DocumentType
-  version         Int            @default(1)
-  content         String?
-  storageKey      String?
-  fileName        String?
-  isFinal         Boolean        @default(false)
-  alignmentScore  Int?
+  id               String       @id @default(cuid())
+  applicationId    String?
+  application      Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type             DocumentType
+  version          Int          @default(1)
+  content          String?
+  storageKey       String?
+  fileName         String?
+  isFinal          Boolean      @default(false)
+  alignmentScore   Int?
   alignmentDetails Json?
-  createdAt       DateTime       @default(now())
+  createdAt        DateTime     @default(now())
 
   @@unique([applicationId, type, version])
 }

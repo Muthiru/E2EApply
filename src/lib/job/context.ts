@@ -16,7 +16,7 @@ function stringList(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-async function fetchGithubReposText(profileGithub: string | null, masterCvText: string | null): Promise<string> {
+async function fetchGithubReposText(profileGithub: string | null, githubToken: string | null, masterCvText: string | null): Promise<string> {
   let githubUsername: string | null = null;
   const profileMatch = profileGithub?.match(/github\.com\/([\w.-]+)/i);
   if (profileMatch) {
@@ -31,8 +31,14 @@ async function fetchGithubReposText(profileGithub: string | null, masterCvText: 
   if (!githubUsername) return "none";
 
   try {
-    const resp = await fetch("https://api.github.com/users/" + githubUsername + "/repos?sort=updated&per_page=15", {
-      headers: { "User-Agent": "E2E-Apply-ATS" }
+    const headers: Record<string, string> = { "User-Agent": "E2E-Apply-ATS" };
+    let url = "https://api.github.com/users/" + githubUsername + "/repos?sort=updated&per_page=15";
+    if (githubToken) {
+      headers["Authorization"] = `Bearer ${githubToken}`;
+      url = "https://api.github.com/user/repos?sort=updated&per_page=15";
+    }
+    const resp = await fetch(url, {
+      headers
     });
     if (resp.ok) {
       const repos = await resp.json();
@@ -164,7 +170,7 @@ export async function getApplicationContext(applicationId: string) {
   const masterCv = application.masterCv;
   const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
 
-  const githubReposText = await fetchGithubReposText(profile.github, masterCv?.textContent ?? null);
+  const githubReposText = await fetchGithubReposText(profile.github, profile.githubToken, masterCv?.textContent ?? null);
 
   const profileText = buildProfileText(profile, masterCv, masterCvContactBlock, githubReposText);
 

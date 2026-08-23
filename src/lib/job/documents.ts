@@ -8,7 +8,7 @@ export const CV_RULES = `Rules:
 - The MASTER CV block in the prompt is the source of truth. Every company, job title, date, degree, institution, skill, project name, and result MUST come from it verbatim — never alter facts, never add facts that are not in it.
 - PRESERVE the original CV's structure: keep the exact section headings and their order (given in the prompt as "CV section order"). Do not add or remove sections.
 - Do NOT write the candidate's name, contact details, location, email, phone, LinkedIn, GitHub, website, or other identity/social-profile lines in the generated CV body. Those are immutable and are rendered verbatim from the MASTER CV contact block by the app.
-- **Tailored Title**: The VERY FIRST line of your output MUST be a professional title (e.g. "Senior Frontend Engineer" or "Business Analyst") that is explicitly tailored to perfectly match the role being applied for, based on the job posting. Output this title on its own line, with no hash symbols or markdown forming.
+- **Tailored Title**: The VERY FIRST line of your output MUST be a professional title (e.g. "Senior Frontend Engineer" or "Business Analyst") optimally tailored to match the role being applied for. Importantly, you MUST append 3 to 4 of the most highly relevant core tech stack/skill ATS keywords from the job description separated by pipelines (e.g. "Senior Frontend Engineer | React | TypeScript | Next.js"). Output this title string exactly on its own line, WITHOUT any encompassing quotation marks, hash symbols, or markdown formatting.
 - After the tailored title, leave a blank line, then start the first CV section heading, e.g. "## Summary".
 - Tailoring means: rephrase the master CV's own words to match the posting's language where the facts genuinely support it (ATS keyword alignment), reorder skills by relevance to the posting, and surface the posting's most important keywords in the Summary's first line if the master CV supports them.
 - **Handling Missing Requirements**: Review the "Missing requirements shown to the user" in the prompt. To maximize the candidate's ATS keyword score, you MUST creatively integrate every single missing requirement keyword into the CV. Weave them naturally into the Skills list, Summary paragraph, or by expanding existing Experience bullets to implicitly cover those competencies (e.g. framing a past project to involve "stakeholder management" or general tools). Do NOT skip any missing keywords.
@@ -174,7 +174,15 @@ function asDocText(input: unknown): string | null {
 export function sanitizeCvFromAi(input: unknown): string | null {
   const text = asDocText(input);
   if (!text) return null;
-  const trimmed = text.trim();
+  let trimmed = text.trim();
+
+  // Aggressively strip wrapping quotation marks from the generated title line
+  const lines = trimmed.split(/\r?\n/);
+  if (lines.length > 0 && !lines[0].startsWith("##")) {
+    lines[0] = lines[0].replace(/^["']|["']$/g, "");
+    trimmed = lines.join("\n");
+  }
+
   if (trimmed.length < 80) return null;
   if (!/(?:^|\n)##\s+/.test(trimmed)) return null;
   return trimmed.slice(0, 12_000);

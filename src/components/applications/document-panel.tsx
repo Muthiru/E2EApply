@@ -62,18 +62,23 @@ function CvPreview({
     paddingClass,
   ].join(" ");
 
-  const contactLines = contactBlockText
-    ? contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    : [
-      header.fullName,
-      header.title,
-      header.location,
-      header.email,
-      header.phone,
-      header.github,
-      header.linkedin,
-    ].filter((line): line is string => Boolean(line));
-  const [nameLine, ...detailLines] = contactLines;
+  let contactLines: string[] = [];
+  if (contactBlockText) {
+    contactLines = contactBlockText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  } else {
+    contactLines = [
+      header.fullName ?? "",
+      header.title ?? "",
+      header.location ?? "",
+      header.email ?? "",
+      header.phone ?? "",
+      header.github ?? "",
+      header.linkedin ?? "",
+    ];
+  }
+
+  const nameLine = contactLines[0];
+  const detailLines = contactLines.slice(1).filter(Boolean);
 
   let bodyText = text;
   let tailoredTitle: string | null = null;
@@ -85,16 +90,15 @@ function CvPreview({
 
   const finalDetailLines = [...detailLines];
   if (tailoredTitle) {
-    const titleObjIndex = finalDetailLines.findIndex(l => !l.includes("@") && !l.includes("github.com") && !l.includes("linkedin.com") && !/\+?\d{8,}/.test(l));
-    if (titleObjIndex !== -1) {
-      finalDetailLines[titleObjIndex] = tailoredTitle;
+    if (!contactBlockText && header.title) {
+      finalDetailLines[0] = tailoredTitle;
     } else {
       finalDetailLines.unshift(tailoredTitle);
     }
   }
 
   const contact = (
-    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
       {finalDetailLines.map((line, idx) => {
         const lineKey = `det-${idx}`;
         const href = linkHref(line);
@@ -180,7 +184,7 @@ function CvPreview({
               {nameLine}
             </p>
           )}
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
             {finalDetailLines.map((line, idx) => {
               const lineKey = `det2-${idx}`;
               const href = linkHref(line);
@@ -561,10 +565,13 @@ function DocumentPanelInner({
     });
   };
 
-  const pdfHref = (type: "CV" | "COVER_LETTER") =>
-    type === "CV"
+  const pdfHref = (type: "CV" | "COVER_LETTER") => {
+    const version = type === "CV" ? cv?.version : coverLetter?.version;
+    const base = type === "CV"
       ? `/dashboard/applications/${applicationId}/cv.pdf`
       : `/dashboard/applications/${applicationId}/cover-letter.pdf`;
+    return `${base}?v=${version || 0}`;
+  };
 
   const actionButtons = (type: "CV" | "COVER_LETTER") => (
     <div className="flex gap-2">
@@ -585,6 +592,12 @@ function DocumentPanelInner({
       >
         {saving ? "Saving…" : "Save as final"}
       </button>
+      <a
+        href={pdfHref(type) + "&format=docx"}
+        className="rounded-md border border-foreground/30 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-neutral-100"
+      >
+        Download DOCX
+      </a>
       <a
         href={pdfHref(type)}
         className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
@@ -629,7 +642,7 @@ function DocumentPanelInner({
           <h2 className="font-semibold">Tailored documents</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Preview the generated CV and cover letter, edit them, and download
-            the final PDF.
+            the final documents.
           </p>
         </div>
         <button
@@ -669,7 +682,7 @@ function DocumentPanelInner({
                 kind="cv"
                 text={cvText}
                 header={header}
-                contactBlockText={masterCvContactBlock}
+                contactBlockText={null}
               />
             </div>
 
@@ -682,12 +695,18 @@ function DocumentPanelInner({
             )}
 
             {hasCvPreview && editing === "CV" && (
-              <textarea
-                value={cvText}
-                onChange={(e) => setCvText(e.target.value)}
-                rows={18}
-                className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
-              />
+              <div className="mt-2">
+                <div className="mb-2 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground border border-dashed">
+                  <p className="font-semibold text-foreground mb-1">Header is auto-injected from your profile</p>
+                  <p>Your name, email, phone, and links are automatically placed at the top of the document. You only need to edit the CV body below.</p>
+                </div>
+                <textarea
+                  value={cvText}
+                  onChange={(e) => setCvText(e.target.value)}
+                  rows={18}
+                  className="w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+                />
+              </div>
             )}
 
             {hasCvPreview && editing !== "CV" && (
@@ -696,7 +715,7 @@ function DocumentPanelInner({
                   text={cvText}
                   header={header}
                   template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
-                  contactBlockText={masterCvContactBlock}
+                  contactBlockText={null}
                 />
                 {!cv && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -741,7 +760,7 @@ function DocumentPanelInner({
                   kind="letter"
                   text={clText}
                   header={header}
-                  contactBlockText={masterCvContactBlock}
+                  contactBlockText={null}
                 />
               </div>
               {editing === "COVER_LETTER" ? (

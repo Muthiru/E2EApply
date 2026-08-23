@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { createDocxFromText } from "@/lib/job/docx";
+
 export async function GET(request: Request) {
   const { userId } = await auth.protect();
   const url = new URL(request.url);
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
     });
   }
 
-  // If no blob but it has generated textContent, dynamically render it!
+  // If no blob but it has generated textContent, dynamically render it as DOCX!
   if (cv.textContent) {
     const profile = await prisma.profile.findFirst({
       where: { user: { clerkId: userId } },
@@ -49,29 +51,17 @@ export async function GET(request: Request) {
 
     if (!profile) return new Response("Profile not found.", { status: 404 });
 
-    const { renderToBuffer } = await import("@react-pdf/renderer");
-    const { CvDocument } = await import("@/components/documents/pdf");
+    const buffer = await createDocxFromText(cv.textContent, userId, true);
 
-    const buffer = await renderToBuffer(
-      CvDocument({
-        text: cv.textContent,
-        template: "faangpath", // Using beautiful default for Master
-        header: {
-          fullName: profile.fullName ?? null,
-          title: profile.title ?? null,
-          location: profile.location ?? null,
-          email: profile.email ?? null,
-          phone: profile.phone ?? null,
-          github: profile.github ?? null,
-          linkedin: profile.linkedin ?? null,
-        },
-      })
-    );
+    let safeName = cv.fileName.replace(/[\r\n"]/g, "");
+    safeName = safeName.replace(/\.pdf$/i, "");
+    if (!safeName.toLowerCase().endsWith(".docx")) {
+      safeName += ".docx";
+    }
 
-    const safeName = cv.fileName.replace(/[\r\n"]/g, "");
     return new Response(new Uint8Array(buffer), {
       headers: {
-        "Content-Type": "application/pdf",
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="${safeName}"`,
       }
     });
