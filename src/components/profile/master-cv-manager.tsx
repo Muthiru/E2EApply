@@ -1,10 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteMasterCv, generateExpertMasterCv } from "@/lib/actions/profile";
 import { useToast } from "@/components/ui/toast";
-import { useState, useRef, useEffect } from "react";
 
 type MasterCvBadgeInfo = {
     id: string;
@@ -47,15 +46,16 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
     };
 
     return (
-        <div className="mb-6 rounded-lg border p-4 space-y-4">
-            <div className="flex items-start justify-between">
+        <div className="panel mb-6 space-y-4 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <h2 className="text-base font-semibold">Your Master CVs</h2>
-                    <p className="mt-1 text-sm text-muted-foreground max-w-[450px]">
-                        You can keep up to 3 Master CVs (e.g. Frontend, Backend, Management). Upload a new one via the &quot;Import from your CV&quot; below, or let the AI write an expert one for you.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Save versions tailored to different roles.
                     </p>
                 </div>
                 <button
+                    type="button"
                     onClick={() => {
                         setGenerating(true);
                         startTransition(async () => {
@@ -70,28 +70,28 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
                         });
                     }}
                     disabled={isPending || generating}
-                    className="rounded-md bg-foreground px-4 py-2 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
+                    className="btn btn-primary"
                 >
                     {generating ? "Generating..." : "Generate AI Master CV"}
                 </button>
             </div>
 
             {cvs.length === 0 ? (
-                <div className="flex items-center gap-4 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                <div className="panel-soft p-4 text-sm text-muted-foreground">
                     No Master CVs uploaded yet.
                 </div>
             ) : (
                 <ul className="space-y-2">
                     {cvs.map((cv) => (
-                        <li key={cv.id} className="flex items-center justify-between gap-4 rounded-md border bg-muted/30 px-4 py-3">
-                            <div>
-                                <p className="text-sm font-medium">{cv.name}</p>
+                        <li key={cv.id} className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium" title={cv.name}>{cv.name}</p>
                                 <p className="text-xs text-muted-foreground">Uploaded {new Date(cv.createdAt).toLocaleDateString()}</p>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <a
                                     href={`/api/profile/cv-master?id=${cv.id}`}
-                                    className="rounded-md border px-3 py-1.5 text-xs hover:border-foreground/50 hover:text-foreground"
+                                    className="btn btn-secondary min-h-8 px-3 py-1.5 text-xs"
                                 >
                                     Download
                                 </a>
@@ -99,7 +99,7 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
                                     type="button"
                                     onClick={() => setConfirmingId(cv.id)}
                                     disabled={isPending}
-                                    className="rounded-md bg-status-rejected/10 px-3 py-1.5 text-xs text-status-rejected hover:bg-status-rejected/20"
+                                    className="btn min-h-8 border border-status-rejected/20 bg-status-rejected/10 px-3 py-1.5 text-xs text-status-rejected hover:bg-status-rejected/20"
                                 >
                                     Delete
                                 </button>
@@ -110,17 +110,14 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
             )}
 
             {confirmingId && (
-                <div
+                <dialog
+                    open
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-                    role="dialog"
-                    aria-modal="true"
                     aria-labelledby="delete-confirm-title"
                     aria-describedby="delete-confirm-description"
-                    onClick={closeConfirm}
                 >
                     <div
                         className="dialog-enter w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl"
-                        onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-start gap-3">
                             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground">
@@ -164,13 +161,13 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
                                 type="button"
                                 onClick={() => handleDelete(confirmingId)}
                                 disabled={isPending}
-                                className="rounded-md bg-status-rejected px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                                className="btn min-h-9 bg-status-rejected px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                             >
                                 {isPending ? "Deleting…" : "Delete"}
                             </button>
                         </div>
                     </div>
-                </div>
+                </dialog>
             )}
         </div>
     );

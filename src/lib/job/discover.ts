@@ -481,7 +481,7 @@ function stripXml(value: string): string {
 }
 
 function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, "").trim();
+  return value.replace(/<\/?[A-Za-z][^<>]*>/g, "").trim();
 }
 
 function isRecentDate(dateString?: string): boolean {
@@ -824,15 +824,7 @@ export async function fetchMuseJobs(): Promise<BoardJob[]> {
 }
 
 export function buildJobSearchQuery(query: string): string {
-  const trimmed = query.trim().replace(/\s+/g, " ");
-  if (!trimmed) return trimmed;
-  if (/\b(jobs?\s+in\s+|hiring\s+in\s+)/i.test(trimmed)) {
-    return trimmed;
-  }
-  if (/\b(jobs?|hiring|opening|vacancy|vacancies|careers?|position|role)\b/i.test(trimmed)) {
-    return trimmed;
-  }
-  return `${trimmed} job opening hiring`;
+  return query.trim().replace(/\s+/g, " ");
 }
 
 function queryWords(query: string): string[] {
@@ -865,12 +857,21 @@ export function rankCandidatesByQuery(
   query: string,
 ): DiscoverCandidate[] {
   // Extract location from query if present (e.g., "jobs in poland", "in London")
-  const locationMatch = /\b(?:in|at|@)\s+([a-zA-Z\s]+)(?:\s|$)/i.exec(query);
-  const location = locationMatch ? locationMatch[1].trim().toLowerCase() : null;
+  const locationMarker = /\b(?:in|at|@)[ \t]+/i.exec(query);
+  const location = locationMarker
+    ? query.slice(locationMarker.index + locationMarker[0].length).trim().toLowerCase()
+    : null;
   
   // Remove location from query for role matching
+  const escapedLocation = location?.replace(/\s+/g, String.raw`\s+`);
   const queryWithoutLocation = location 
-    ? query.replace(new RegExp(`\\b(?:in|at|@)\\s+${location.replace(/\s+/g, '\\s+')}\\b`, 'i'), '').trim()
+    ? query.replace(
+      new RegExp(
+        String.raw`\b(?:in|at|@)\s+${escapedLocation}\b`,
+        "i",
+      ),
+      "",
+    ).trim()
     : query;
 
   const ranked = candidates
@@ -976,9 +977,9 @@ export function isLikelyOldCandidate(candidate: DiscoverCandidate): boolean {
   for (const pattern of oldIndicators) {
     if (pattern.test(text)) {
       // Check if the year is specifically in the past
-      const yearMatch = text.match(/\b(20\d{2})\b/);
+      const yearMatch = /\b(20\d{2})\b/.exec(text);
       if (yearMatch) {
-        const year = parseInt(yearMatch[1]);
+        const year = Number.parseInt(yearMatch[1], 10);
         const currentYear = new Date().getFullYear();
         if (year < currentYear) {
           return true;

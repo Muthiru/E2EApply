@@ -218,6 +218,18 @@ Document (generated CV/cover letter files, versioned)
 - [x] **Discovery prefill with location**: Populate discovery search filters from `preferences.locations` and `preferences.remoteOnly`.
 - [x] **Applications pagination**: Add cursor-based pagination to the applications list to handle 50+ applications.
 - [x] **Mask GitHub token**: Hide the PAT in the UI with a password field type.
+
+### Phase 1.12 — App-wide UI and Mobile Polish (completed 2026-08-28)
+**Goal:** Improve the overall product interface and mobile experience while preserving all existing application, discovery, profile, scoring, document, download, and tracker functionality.
+- [x] Added shared responsive UI primitives in `src/app/globals.css` for app containers, panels, buttons, badges, inputs, focus states, and a calmer product color system.
+- [x] Reworked the authenticated app shell and navigation for small screens with a compact brand mark, scroll-safe nav, sticky translucent header, and wider content container.
+- [x] Upgraded Dashboard hierarchy, pipeline cards, and next-step actions with stronger spacing, panel styling, and mobile-friendly buttons.
+- [x] Rebuilt the Applications mobile experience as card-based rows while keeping the desktop table view intact.
+- [x] Polished job paste and job discovery surfaces with consistent controls, responsive filter layouts, cleaner result cards, and wrapped action areas.
+- [x] Improved application detail, scoring controls, status history, and document actions so selectors, buttons, previews, and history entries stack cleanly on mobile.
+- [x] Made Profile and Master CV management responsive by replacing squeezed fixed-grid rows with mobile-first grids, consistent form controls, and full-width sticky save actions on phones.
+- [x] Refreshed the public landing page to match the app UI language and removed the older decorative treatment.
+*(verified 2026-08-28: lint 0, tsc 0, Prisma validate OK, 128 tests (10 files) passing, production build OK)*
 - [x] **Exa category filter**: Pass `category: "job listing"` to Exa search for better result relevance.
 
 **Robustness:**

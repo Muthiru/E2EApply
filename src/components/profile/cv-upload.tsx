@@ -46,13 +46,12 @@ export function CvUpload({
   };
 
   return (
-    <div className="rounded-lg border border-dashed p-5">
+    <div className="panel-soft p-5">
       <p className="text-sm font-medium">Import from your CV</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Upload a PDF or DOCX to pre-fill the fields below. Review before
-        saving.
+        Import a PDF or DOCX to prefill your profile.
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <input
           ref={inputRef}
           type="file"
@@ -67,7 +66,7 @@ export function CvUpload({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          className="btn btn-primary"
         >
           {busy ? "Parsing…" : "Choose CV file"}
         </button>

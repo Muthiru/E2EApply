@@ -221,9 +221,9 @@ describe("isJobPostingTitle", () => {
 });
 
 describe("buildJobSearchQuery", () => {
-  it("adds job intent when the query lacks hiring keywords", () => {
+  it("preserves the query while normalizing whitespace", () => {
     expect(buildJobSearchQuery("Senior Go Engineer Berlin")).toBe(
-      "Senior Go Engineer Berlin job opening hiring",
+      "Senior Go Engineer Berlin",
     );
   });
 

@@ -57,15 +57,7 @@ export function JobDiscovery({
     if (loc) {
       queryParts.push(`in ${loc}`);
     }
-    
-    // Add job intent if not already clear
-    const combinedQuery = queryParts.join(" ");
-    const hasJobIntent = /\b(jobs?|hiring|opening|vacancy|position|role|careers?)\b/i.test(combinedQuery);
-    
-    let finalQuery = combinedQuery;
-    if (!hasJobIntent) {
-      finalQuery = `${combinedQuery} jobs`;
-    }
+    const finalQuery = queryParts.join(" ");
 
     startSearch(async () => {
       const result: SearchJobsResult = await searchJobCandidatesAction(finalQuery);
@@ -101,7 +93,7 @@ export function JobDiscovery({
   };
 
   return (
-    <div className="rounded-lg border bg-background p-6">
+    <div className="panel p-5 sm:p-6">
       <div className="mb-4">
         <h2 className="text-lg font-semibold">Discover jobs</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -111,7 +103,7 @@ export function JobDiscovery({
       
       <div className="space-y-4">
         {/* Main search input */}
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex flex-col gap-3 lg:flex-row">
           <div className="relative flex-1">
             <input
               value={query}
@@ -120,15 +112,16 @@ export function JobDiscovery({
                 if (e.key === "Enter") handleSearch();
               }}
               placeholder="Job title, skills, or company (e.g., Senior Go Engineer)"
-              className="w-full rounded-md border px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="field-control pr-10"
               disabled={searching}
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="btn btn-quiet absolute right-2 top-1/2 h-8 min-h-0 w-8 -translate-y-1/2 p-0"
                 disabled={searching}
+                aria-label="Clear search query"
               >
                 ✕
               </button>
@@ -138,7 +131,7 @@ export function JobDiscovery({
             type="button"
             onClick={handleSearch}
             disabled={searching || query.trim().length < 2}
-            className="shrink-0 rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px] shadow-md hover:shadow-lg transition-all"
+            className="btn btn-primary shrink-0 lg:min-w-[120px]"
           >
             {searching ? (
               <span className="flex items-center gap-2">
@@ -152,8 +145,8 @@ export function JobDiscovery({
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:flex-none sm:w-1/2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,14rem)]">
+          <div className="relative">
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -161,25 +154,26 @@ export function JobDiscovery({
                 if (e.key === "Enter") handleSearch();
               }}
               placeholder="Location (e.g., London, US, Poland)"
-              className="w-full rounded-md border px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20"
+              className="field-control pr-10"
               disabled={searching}
             />
             {location && (
               <button
                 type="button"
                 onClick={() => setLocation("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="btn btn-quiet absolute right-2 top-1/2 h-8 min-h-0 w-8 -translate-y-1/2 p-0"
                 disabled={searching}
+                aria-label="Clear location"
               >
                 ✕
               </button>
             )}
           </div>
-          <div className="relative flex-1 sm:flex-none sm:w-1/3">
+          <div className="relative">
             <select
               value={workModel}
               onChange={(e) => setWorkModel(e.target.value as "any" | "Remote" | "Onsite" | "Hybrid")}
-              className="w-full rounded-md border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-foreground/20 appearance-none bg-background disabled:opacity-50"
+              className="field-control appearance-none pr-10 disabled:opacity-50"
               disabled={searching}
             >
               <option value="any">Any work model</option>
@@ -199,7 +193,7 @@ export function JobDiscovery({
             <button
               type="button"
               onClick={() => setWorkModel("any")}
-              className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
+              className="badge border-border text-muted-foreground hover:bg-muted"
               disabled={searching}
             >
               {workModel} ✕
@@ -209,7 +203,7 @@ export function JobDiscovery({
             <button
               type="button"
               onClick={() => setLocation("")}
-              className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
+              className="badge border-border text-muted-foreground hover:bg-muted"
               disabled={searching}
             >
               {location} ✕
@@ -220,7 +214,7 @@ export function JobDiscovery({
 
       {/* Search info */}
       {usedFallback && results && (
-        <div className="mt-4 rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
+        <div className="mt-4 rounded-md border border-status-assessment/30 bg-status-assessment/10 px-3 py-2">
           <p className="text-xs text-amber-800">
             ⚠️ Using basic web search for these results. For better results, try adding more specific job terms.
           </p>
@@ -229,7 +223,7 @@ export function JobDiscovery({
 
       {/* Results */}
       {results === null && !searching && (
-        <div className="mt-6 rounded-md border border-dashed p-8 text-center">
+        <div className="panel-soft mt-6 p-8 text-center">
           <p className="text-sm text-muted-foreground">
             Enter a job title above to discover opportunities
           </p>
@@ -237,14 +231,14 @@ export function JobDiscovery({
       )}
 
       {searching && (
-        <div className="mt-6 rounded-md border p-8 text-center">
+        <div className="panel-soft mt-6 p-8 text-center">
           <div className="inline-block animate-spin text-2xl mb-2">⟳</div>
           <p className="text-sm text-muted-foreground">Searching for jobs...</p>
         </div>
       )}
 
       {results && results.length === 0 && (
-        <div className="mt-6 rounded-md border p-8 text-center">
+        <div className="panel-soft mt-6 p-8 text-center">
           <p className="text-sm font-medium">No jobs found</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Try adjusting your search terms or filters
@@ -254,7 +248,7 @@ export function JobDiscovery({
 
       {results && results.length > 0 && (
         <>
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm font-medium">
               {results.length} job{results.length !== 1 ? 's' : ''} found
             </p>
@@ -262,7 +256,7 @@ export function JobDiscovery({
               type="button"
               onClick={handleSearch}
               disabled={searching}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="btn btn-quiet min-h-8 px-2 py-1 text-xs"
             >
               Refresh results
             </button>
@@ -274,16 +268,16 @@ export function JobDiscovery({
               return (
                 <li
                   key={candidate.url}
-                  className="group rounded-lg border bg-card p-4 hover:border-foreground/50 transition-colors"
+                  className="group rounded-lg border border-border bg-white/80 p-4 shadow-sm transition-colors hover:border-primary/40"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-2">
                         <a
                           href={candidate.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-semibold underline-offset-2 hover:underline"
+                          className="text-sm font-semibold text-foreground underline-offset-2 hover:underline"
                         >
                           {candidate.title}
                         </a>
@@ -305,11 +299,11 @@ export function JobDiscovery({
                       )}
                     </div>
                     
-                    <div className="flex shrink-0 flex-col items-end gap-2">
+                    <div className="flex shrink-0 flex-row items-center justify-between gap-3 sm:flex-col sm:items-end">
                       {candidate.estimatedMatch !== null && (
                         <div className="text-right">
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(candidate.estimatedMatch)}`}
+                            className={`badge ${matchBadgeClass(candidate.estimatedMatch)}`}
                             title={`Matched: ${candidate.matchedSkills.join(", ") || "none yet"}`}
                           >
                             {candidate.estimatedMatch}%
@@ -324,11 +318,11 @@ export function JobDiscovery({
                         type="button"
                         onClick={() => handleAdd(candidate.url)}
                         disabled={adding || isAdded}
-                        className={`rounded-lg px-4 py-2 text-xs font-medium transition-all shadow-sm hover:shadow-md ${
+                        className={`btn min-h-9 px-3 py-2 text-xs ${
                           isAdded 
-                            ? "bg-green-100 text-green-800 border border-green-200 cursor-default" 
-                            : "bg-blue-700 text-white hover:bg-blue-800"
-                        } disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px]`}
+                            ? "border border-status-offer/30 bg-status-offer/10 text-status-offer"
+                            : "btn-primary"
+                        } disabled:opacity-50 disabled:cursor-not-allowed sm:min-w-[110px]`}
                       >
                         {adding ? "Adding…" : isAdded ? "✓ Added" : "Add to tracker"}
                       </button>
@@ -339,7 +333,7 @@ export function JobDiscovery({
             })}
           </ul>
           
-          <div className="mt-4 rounded-md bg-muted/50 p-3">
+          <div className="panel-soft mt-4 p-3">
             <p className="text-xs text-muted-foreground">
               💡 Tip: Estimated match uses your search query and profile skills. The full AI match score runs when you add a job to your tracker.
             </p>

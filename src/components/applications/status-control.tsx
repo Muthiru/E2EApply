@@ -48,11 +48,11 @@ export function StatusControl({
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[12rem_minmax(0,1fr)_auto] sm:items-center">
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-md border px-3 py-2 text-sm"
+          className="field-control"
         >
           {STATUSES.map((option) => (
             <option key={option} value={option}>
@@ -64,13 +64,13 @@ export function StatusControl({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Note (optional)"
-          className="w-64 rounded-md border px-3 py-2 text-sm"
+          className="field-control"
         />
         <button
           type="button"
           onClick={handleUpdate}
           disabled={isPending || status === current}
-          className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+          className="btn btn-secondary"
         >
           {isPending ? "Updating…" : "Update status"}
         </button>
