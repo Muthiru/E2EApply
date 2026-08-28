@@ -44,18 +44,22 @@ export function ScoreButton(props: Readonly<{
   let buttonText = "Score this job";
   if (isPending) {
     buttonText = "Generating…";
+  } else if (masterCvs.length === 0) {
+    buttonText = "Upload a Master CV first";
+  } else if (masterCvs.length > 0 && !selectedCvId) {
+    buttonText = "Select a Master CV";
   } else if (hasScore) {
     buttonText = "Rescore";
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
       {masterCvs.length > 0 && (
         <select
           disabled={isPending}
           value={selectedCvId ?? "none"}
           onChange={(e) => handleSelectCv(e.target.value)}
-          className="rounded-md border bg-transparent px-3 py-1.5 text-sm"
+          className="field-control sm:w-56"
         >
           <option value="none">No tailored CV selected</option>
           {masterCvs.map(cv => (
@@ -66,8 +70,8 @@ export function ScoreButton(props: Readonly<{
       <button
         type="button"
         onClick={handleScore}
-        disabled={isPending}
-        className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+        disabled={isPending || masterCvs.length === 0 || !selectedCvId}
+        className="btn btn-primary"
       >
         {buttonText}
       </button>

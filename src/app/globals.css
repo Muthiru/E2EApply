@@ -2,60 +2,81 @@
 
 /* E2E Apply Design System */
 :root {
-  /* Professional color scheme */
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --muted: #f4f4f5;
-  --muted-foreground: #737373;
-  --border: #e5e5e5;
+  --background: #f7f8fb;
+  --foreground: #12131a;
+  --muted: #eef1f6;
+  --muted-foreground: #667085;
+  --border: #d9dee8;
   --card: #ffffff;
-  --card-foreground: #0a0a0a;
+  --card-foreground: #12131a;
   
-  /* Accent colors */
-  --accent: #0a0a0a;
+  --accent: #172033;
   --accent-foreground: #ffffff;
-  --accent-muted: #f4f4f5;
-  --accent-hover: #171717;
+  --accent-muted: #e9edf5;
+  --accent-hover: #243047;
   
-  /* Primary accent for buttons - dark gray with subtle gradient */
-  --button-primary: #1a1a1a;
-  --button-primary-hover: #2a2a2a;
-  --button-secondary: #e5e5e5;
-  --button-secondary-hover: #d4d4d4;
+  --button-primary: #172033;
+  --button-primary-hover: #243047;
+  --button-secondary: #edf1f7;
+  --button-secondary-hover: #e2e8f1;
   
-  /* Gradient stops */
-  --gradient-start: #1a1a1a;
-  --gradient-end: #2a2a2a;
+  --gradient-start: #172033;
+  --gradient-end: #27506d;
   
   /* Status colors */
-  --status-pending: #737373;
+  --status-pending: #667085;
   --status-applied: #2563eb;
-  --status-assessment: #d97706;
+  --status-assessment: #c77700;
   --status-interview: #7c3aed;
-  --status-offer: #16a34a;
-  --status-rejected: #dc2626;
+  --status-offer: #12805c;
+  --status-rejected: #c73535;
   --status-ghosted: #6b7280;
   
   /* Additional UI colors */
-  --primary: #0a0a0a;
-  --primary-hover: #171717;
+  --primary: #172033;
+  --primary-hover: #243047;
   --secondary: #64748b;
-  --success: #16a34a;
-  --warning: #d97706;
-  --error: #dc2626;
-  --info: #0ea5e9;
+  --success: #12805c;
+  --warning: #c77700;
+  --error: #c73535;
+  --info: #1f7aa8;
   
-  /* Brand accent - subtle blue for emphasis */
-  --brand: #3b82f6;
-  --brand-light: #dbeafe;
+  --brand: #1f7aa8;
+  --brand-light: #e3f2f8;
+  --surface-raised: #ffffff;
+  --surface-soft: #f1f4f8;
+  --ring: rgba(31, 122, 168, 0.25);
+  --shadow-soft: 0 18px 45px rgba(18, 19, 26, 0.08);
+  --shadow-card: 0 1px 2px rgba(18, 19, 26, 0.05), 0 10px 30px rgba(18, 19, 26, 0.06);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(31, 122, 168, 0.09), transparent 32rem),
+    linear-gradient(180deg, #fbfcfe 0%, var(--background) 18rem);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-status-pending: var(--status-pending);
+  --color-status-applied: var(--status-applied);
+  --color-status-assessment: var(--status-assessment);
+  --color-status-interview: var(--status-interview);
+  --color-status-offer: var(--status-offer);
+  --color-status-rejected: var(--status-rejected);
+  --color-status-ghosted: var(--status-ghosted);
 }
 
 /* Improved button styles */
@@ -69,31 +90,152 @@ button:disabled {
   opacity: 0.5;
 }
 
-/* Primary button style with gradient */
+input,
+textarea,
+select {
+  min-width: 0;
+}
+
+::selection {
+  background: rgba(31, 122, 168, 0.18);
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(247, 248, 251, 0.95)),
+    var(--background);
+}
+
+.app-container {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.eyebrow {
+  color: var(--brand);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-card);
+}
+
+.panel-soft {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(241, 244, 248, 0.72);
+}
+
+.field-control {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.72rem 0.9rem;
+  color: var(--foreground);
+  font-size: 0.875rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.field-control:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px var(--ring);
+  outline: none;
+}
+
+.field-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  padding: 0.62rem 0.95rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.2;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
   color: var(--accent-foreground);
   border: 1px solid var(--button-primary);
+  box-shadow: 0 10px 22px rgba(39, 80, 109, 0.18);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--button-primary-hover) 0%, #3a3a3a 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: linear-gradient(135deg, var(--button-primary-hover) 0%, #2d6584 100%);
+  box-shadow: 0 14px 28px rgba(39, 80, 109, 0.24);
 }
 
-/* Secondary button style */
 .btn-secondary {
-  background-color: var(--button-secondary);
+  background-color: rgba(255, 255, 255, 0.78);
   color: var(--foreground);
-  border: 1px solid var(--button-secondary);
+  border: 1px solid var(--border);
 }
 
 .btn-secondary:hover:not(:disabled) {
   background-color: var(--button-secondary-hover);
-  border-color: var(--button-secondary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: rgba(23, 32, 51, 0.28);
+  box-shadow: 0 8px 18px rgba(18, 19, 26, 0.08);
+}
+
+.btn-quiet {
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.btn-quiet:hover:not(:disabled) {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.28rem 0.58rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.mobile-card-list {
+  display: grid;
+  gap: 0.75rem;
 }
 
 /* Brand accent button */
@@ -161,4 +303,26 @@ html {
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (min-width: 640px) {
+  .app-container {
+    padding-inline: 1.5rem;
+  }
+
+  .page-stack {
+    gap: 1.5rem;
+  }
+
+  .page-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-container {
+    padding-inline: 2rem;
+  }
 }

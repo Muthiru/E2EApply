@@ -170,6 +170,10 @@ export async function scoreApplication(
     };
   }
 
+  if (!context.application.masterCv) {
+    return { ok: false, error: "Select a Master CV before scoring this job." };
+  }
+
   const { job, profileText, jobText } = context;
 
   const ai = getAiProvider();

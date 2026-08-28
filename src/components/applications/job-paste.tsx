@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addJobFromText, scoreApplication } from "@/lib/actions/job";
+import { addJobFromText } from "@/lib/actions/job";
 import { useToast } from "@/components/ui/toast";
 
 export function JobPaste() {
@@ -21,11 +21,6 @@ export function JobPaste() {
         setText("");
         setUrl("");
         toast("Job added to your tracker.");
-        try {
-          await scoreApplication(result.applicationId);
-        } catch {
-          // Job saved; scoring is retryable from the detail page.
-        }
         router.push(`/dashboard/applications/${result.applicationId}`);
       } else {
         setError(result.error);
@@ -35,13 +30,11 @@ export function JobPaste() {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="panel p-5 sm:p-6">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-foreground">Track a job</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Paste the job description or a posting URL — the role is extracted,
-          scored against your profile, and ready for a tailored CV and cover
-          letter.
+          Paste a job description or URL to track and score it.
         </p>
       </div>
       
@@ -52,15 +45,16 @@ export function JobPaste() {
             onChange={(e) => setText(e.target.value)}
             rows={6}
             placeholder="Paste the full job description here…"
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+            className="field-control min-h-40 resize-y pr-10"
             disabled={isPending}
           />
           {text && (
             <button
               type="button"
               onClick={() => setText("")}
-              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              className="btn btn-quiet absolute right-2 top-2 h-8 min-h-0 w-8 p-0"
               disabled={isPending}
+              aria-label="Clear job description"
             >
               ✕
             </button>
@@ -72,22 +66,23 @@ export function JobPaste() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Posting URL (or paste the URL alone)"
-            className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+            className="field-control pr-10"
             disabled={isPending}
           />
           {url && (
             <button
               type="button"
               onClick={() => setUrl("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              className="btn btn-quiet absolute right-2 top-1/2 h-8 min-h-0 w-8 -translate-y-1/2 p-0"
               disabled={isPending}
+              aria-label="Clear posting URL"
             >
               ✕
             </button>
           )}
         </div>
         
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {error && (
             <div className="flex-1 rounded-lg bg-error/10 border border-error/20 px-4 py-3">
               <p role="alert" className="text-sm text-error">
@@ -99,12 +94,12 @@ export function JobPaste() {
             type="button"
             onClick={handleSubmit}
             disabled={isPending || (text.trim().length < 80 && url.trim().length === 0)}
-            className="inline-flex items-center justify-center rounded-lg bg-blue-700 px-6 py-3 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px] shadow-md hover:shadow-lg transition-all"
+            className="btn btn-primary w-full sm:w-auto sm:min-w-37.5"
           >
             {isPending ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin">⟳</span>
-                Analyzing & scoring…
+                <span>Analyzing &amp; scoring…</span>
               </span>
             ) : (
               "Add to tracker"

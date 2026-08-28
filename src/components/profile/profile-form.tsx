@@ -290,14 +290,14 @@ export function ProfileForm(props: Readonly<{
           value={form.summary ?? ""}
           onChange={(e) => set("summary", e.target.value)}
           rows={5}
-          className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          className="field-control min-h-32 resize-y"
           placeholder="2–4 sentences covering who you are and what you're looking for."
         />
       </Section>
 
       <Section title="Skills" error={sectionHas("skills")}>
         {form.skills.map((skill, i) => (
-          <div key={skill.id ?? i} className="grid grid-cols-[1fr_1fr_100px_40px] gap-3">
+          <div key={skill.id ?? i} className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_7rem_2.5rem]">
             <Input
               value={skill.name}
               onChange={(v) => updateItem("skills", i, { name: v })}
@@ -320,7 +320,7 @@ export function ProfileForm(props: Readonly<{
             <button
               type="button"
               onClick={() => removeItem("skills", i)}
-              className="flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-error hover:text-error transition-colors"
+              className="flex min-h-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-error hover:text-error"
               aria-label="Remove skill"
             >
               ✕
@@ -334,7 +334,7 @@ export function ProfileForm(props: Readonly<{
 
       <Section title="Work experience" error={sectionHas("experiences")}>
         {form.experiences.map((exp, i) => (
-          <div key={exp.id ?? i} className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div key={exp.id ?? i} className="space-y-4 rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Company" error={err(`experiences.${i}.company`)} required>
                 <Input
@@ -357,7 +357,7 @@ export function ProfileForm(props: Readonly<{
                   placeholder="City, Country"
                 />
               </Field>
-              <div className="flex items-end gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Start date">
                   <DateInput
                     value={exp.startDate}
@@ -394,7 +394,7 @@ export function ProfileForm(props: Readonly<{
                   updateItem("experiences", i, { description: e.target.value })
                 }
                 rows={3}
-                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="field-control min-h-28 resize-y"
                 placeholder="Describe your responsibilities and achievements..."
               />
             </Field>
@@ -436,7 +436,7 @@ export function ProfileForm(props: Readonly<{
 
       <Section title="Education" error={sectionHas("educations")}>
         {form.educations.map((ed, i) => (
-          <div key={ed.id ?? i} className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div key={ed.id ?? i} className="space-y-4 rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Institution" error={err(`educations.${i}.institution`)} required>
                 <Input
@@ -504,7 +504,7 @@ export function ProfileForm(props: Readonly<{
 
       <Section title="Projects" error={sectionHas("projects")}>
         {form.projects.map((p, i) => (
-          <div key={p.id ?? i} className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div key={p.id ?? i} className="space-y-4 rounded-lg border border-border bg-muted/20 p-4 sm:p-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Project name" error={err(`projects.${i}.name`)} required>
                 <Input
@@ -539,7 +539,7 @@ export function ProfileForm(props: Readonly<{
                   updateItem("projects", i, { description: e.target.value })
                 }
                 rows={3}
-                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="field-control min-h-28 resize-y"
                 placeholder="Describe what you built and your role..."
               />
             </Field>
@@ -570,7 +570,7 @@ export function ProfileForm(props: Readonly<{
         {form.certifications.map((c, i) => (
           <div
             key={c.id ?? i}
-            className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_40px]"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_10rem_2.5rem]"
           >
             <Input
               value={c.name}
@@ -598,7 +598,7 @@ export function ProfileForm(props: Readonly<{
             <button
               type="button"
               onClick={() => removeItem("certifications", i)}
-              className="flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-error hover:text-error transition-colors"
+              className="flex min-h-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-error hover:text-error"
               aria-label="Remove certification"
             >
               ✕
@@ -702,7 +702,7 @@ export function ProfileForm(props: Readonly<{
         </label>
       </Section>
 
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border py-4 flex items-center justify-end gap-3">
+      <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-backdrop-filter:bg-background/70 sm:mx-0 sm:flex-row sm:items-center sm:justify-end sm:px-0">
         {message && (
           <span
             role="status"
@@ -716,12 +716,12 @@ export function ProfileForm(props: Readonly<{
           type="button"
           onClick={handleSubmit}
           disabled={isPending}
-          className="inline-flex items-center justify-center rounded-lg bg-blue-700 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px] shadow-md hover:shadow-lg transition-all"
+          className="btn btn-primary w-full sm:w-auto sm:min-w-35"
         >
           {isPending ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin">⟳</span>
-              Saving…
+              <span>Saving…</span>
             </span>
           ) : (
             "Save profile"
@@ -845,7 +845,7 @@ function Section(props: Readonly<{
 }>) {
   const { title, children, error } = props;
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+    <section className="panel space-y-4 p-5 sm:p-6">
       <h2 className={`text-lg font-semibold ${error ? "text-error" : "text-foreground"}`}>
         {title}
       </h2>
@@ -891,8 +891,8 @@ function Input(props: Readonly<{
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
-        className={`w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-          error ? "border-error focus:ring-error/20" : "border-border bg-background"
+        className={`field-control ${
+          error ? "border-error focus:ring-error/20" : ""
         }`}
       />
       {error && <span className="block text-xs text-error">{error}</span>}
@@ -914,7 +914,7 @@ function DateInput(props: Readonly<{
       onChange={(e) =>
         onChange(e.target.value ? new Date(e.target.value) : null)
       }
-      className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      className="field-control"
     />
   );
 }
@@ -928,7 +928,7 @@ function AddButton(props: Readonly<{
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:border-primary hover:text-primary hover:bg-primary/5"
+      className="btn border border-dashed border-border bg-white/60 text-muted-foreground hover:border-primary hover:bg-primary/5 hover:text-primary"
     >
       <span className="text-lg">+</span>
       {children}
@@ -942,7 +942,7 @@ function RemoveButton(props: Readonly<{ onClick: () => void }>) {
     <button
       type="button"
       onClick={onClick}
-      className="text-sm text-muted-foreground hover:text-error transition-colors underline-offset-2 hover:underline"
+      className="btn btn-quiet min-h-8 px-2 py-1 text-sm hover:text-error"
     >
       Remove
     </button>

@@ -1,9 +1,17 @@
 import { prisma } from "@/lib/prisma";
 
 export async function ensureUser(clerkId: string) {
-  return prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { clerkId },
-    create: { clerkId, profile: { create: {} } },
+    create: { clerkId },
     update: {},
   });
+
+  await prisma.profile.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id },
+    update: {},
+  });
+
+  return user;
 }

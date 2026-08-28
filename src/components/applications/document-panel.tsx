@@ -84,7 +84,7 @@ function CvPreview({
   const paddingClass = compact ? "p-8 sm:p-10" : modern ? "" : "p-10 sm:p-12";
 
   const pageClass = [
-    "mx-auto min-h-[760px] w-full max-w-[760px] bg-white text-neutral-950",
+    "mx-auto min-h-[620px] w-[760px] max-w-full bg-white text-neutral-950 sm:min-h-[760px]",
     "shadow-sm ring-1 ring-border",
     paddingClass,
   ].join(" ");
@@ -233,7 +233,7 @@ function LetterPreview({
   const modern = template === "modern";
   const compact = template === "compact";
   const pageClass = [
-    "mx-auto min-h-[760px] w-full max-w-[760px] bg-white text-neutral-950",
+    "mx-auto min-h-[620px] w-[760px] max-w-full bg-white text-neutral-950 sm:min-h-[760px]",
     "shadow-sm ring-1 ring-border",
     compact ? "p-8 sm:p-10" : "p-10 sm:p-12",
     modern ? "border-t-4 border-blue-600" : "",
@@ -382,9 +382,9 @@ function TemplatePicker({
               onClick={() => onChange(template.id)}
               disabled={disabled}
               title={template.description}
-              className={`rounded-md border text-left disabled:opacity-50 ${selected
-                ? "border-foreground ring-1 ring-foreground"
-                : "hover:border-foreground/50"
+              className={`rounded-md border bg-white text-left shadow-sm transition disabled:opacity-50 ${selected
+                ? "border-primary ring-2 ring-primary/20"
+                : "border-border hover:border-primary/40"
                 }`}
             >
               <div className="pointer-events-none m-2 aspect-[1/1.414] overflow-hidden rounded-sm border bg-neutral-50">
@@ -428,11 +428,11 @@ type DocumentPanelProps = {
 function AlignmentBlock({ alignment }: Readonly<{ alignment: CvAlignmentCheck | null }>) {
   if (!alignment) return null;
   return (
-    <div className="mt-3 rounded-md border p-3">
+    <div className="panel-soft mt-3 p-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium">ATS keyword coverage</p>
         <span
-          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
+          className={`badge ${matchBadgeClass(alignment.score)}`}
         >
           {alignment.score}%
         </span>
@@ -446,7 +446,7 @@ function AlignmentBlock({ alignment }: Readonly<{ alignment: CvAlignmentCheck | 
           {alignment.covered.map((keyword) => (
             <span
               key={keyword}
-              className="rounded-full border border-status-offer/40 px-2 py-0.5 text-xs text-status-offer"
+              className="badge border-status-offer/40 text-status-offer"
             >
               {keyword}
             </span>
@@ -581,13 +581,13 @@ function DocumentPanelInner({
   };
 
   const actionButtons = (type: "CV" | "COVER_LETTER") => (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <button
         type="button"
         onClick={() =>
           setEditing((current) => (current === type ? null : type))
         }
-        className="rounded-md border px-3 py-1.5 text-sm hover:border-foreground/50 hover:text-foreground"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
       >
         {editing === type ? "Done editing" : "Edit"}
       </button>
@@ -595,21 +595,21 @@ function DocumentPanelInner({
         type="button"
         onClick={() => handleSaveFinal(type)}
         disabled={saving}
-        className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
       >
         {saving ? "Saving…" : "Save as final"}
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
         download
-        className="rounded-md border border-foreground/30 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-neutral-100"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
       >
         Download DOCX
       </a>
       <a
         href={pdfHref(type)}
         download
-        className="rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:opacity-90"
+        className="btn btn-primary min-h-9 px-3 py-1.5 text-sm"
       >
         Download PDF
       </a>
@@ -645,8 +645,8 @@ function DocumentPanelInner({
   }
 
   return (
-    <section className="rounded-lg border p-5">
-      <div className="flex items-start justify-between gap-4">
+    <section className="panel p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-semibold">Tailored documents</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -658,7 +658,7 @@ function DocumentPanelInner({
           type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          className="btn btn-primary w-full sm:w-auto"
         >
           {generateText}
         </button>
@@ -667,13 +667,13 @@ function DocumentPanelInner({
       {(cv || coverLetter || hasCvPreview) && (
         <div className="mt-4 space-y-8">
           <div>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-medium">
                 CV{" "}
                 {cvStatusBlock}
                 {alignment && (
                   <span
-                    className={`ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${matchBadgeClass(alignment.score)}`}
+                    className={`badge ml-2 ${matchBadgeClass(alignment.score)}`}
                   >
                     keyword score {alignment.score}%
                   </span>
@@ -705,7 +705,7 @@ function DocumentPanelInner({
 
             {hasCvPreview && editing === "CV" && (
               <div className="mt-2">
-                <div className="mb-2 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground border border-dashed">
+                <div className="panel-soft mb-2 p-3 text-xs text-muted-foreground">
                   <p className="font-semibold text-foreground mb-1">Header is auto-injected from your profile</p>
                   <p>Your name, email, phone, and links are automatically placed at the top of the document. You only need to edit the CV body below.</p>
                 </div>
@@ -713,13 +713,13 @@ function DocumentPanelInner({
                   value={cvText}
                   onChange={(e) => setCvText(e.target.value)}
                   rows={18}
-                  className="w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+                  className="field-control font-mono text-xs leading-relaxed"
                 />
               </div>
             )}
 
             {hasCvPreview && editing !== "CV" && (
-              <div className="mt-2">
+              <div className="mt-2 overflow-x-auto pb-2">
                 <CvPreview
                   text={cvText}
                   header={header}
@@ -738,7 +738,7 @@ function DocumentPanelInner({
                     type="button"
                     onClick={handleCheckAlignment}
                     disabled={checking}
-                    className="mt-3 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+                    className="btn btn-secondary mt-3"
                   >
                     {checkCoverageBtnText}
                   </button>
@@ -749,7 +749,7 @@ function DocumentPanelInner({
 
           {coverLetter && (
             <div>
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-medium">
                   Cover letter{" "}
                   <span className="text-muted-foreground">
@@ -777,10 +777,10 @@ function DocumentPanelInner({
                   value={clText}
                   onChange={(e) => setClText(e.target.value)}
                   rows={14}
-                  className="mt-2 w-full rounded-md border px-3 py-2 font-mono text-xs leading-relaxed"
+                  className="field-control mt-2 font-mono text-xs leading-relaxed"
                 />
               ) : (
-                <div className="mt-2">
+                <div className="mt-2 overflow-x-auto pb-2">
                   <LetterPreview
                     text={clText}
                     template={isClTemplateId(clTemplate) ? clTemplate : "classic"}

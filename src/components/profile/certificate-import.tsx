@@ -48,7 +48,7 @@ export function CertificateImport({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
       <input
         ref={inputRef}
         type="file"
@@ -60,7 +60,7 @@ export function CertificateImport({
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="rounded-md border border-dashed px-3 py-1.5 text-sm hover:border-foreground/50 disabled:opacity-50"
+        className="btn border border-dashed border-border bg-white/60 px-3 py-1.5 text-sm hover:border-primary hover:text-primary disabled:opacity-50"
       >
         {busy ? "Reading certificate…" : "Import from file"}
       </button>

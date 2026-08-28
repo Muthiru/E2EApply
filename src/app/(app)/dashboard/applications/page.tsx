@@ -5,7 +5,6 @@ import { matchBadgeClass, statusBadgeClass, statusDotClass, statusLabel } from "
 import { isLikelyGhosted } from "@/lib/job/tracker";
 import { JobPaste } from "@/components/applications/job-paste";
 import { JobDiscovery } from "@/components/applications/job-discovery";
-import { getDiscoveryPrefill } from "@/lib/actions/discover";
 
 import { GhostedButton } from "@/components/applications/ghosted-button";
 import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
@@ -21,7 +20,7 @@ export default async function ApplicationsPage({
 
   const whereClause = { user: { clerkId: userId } };
 
-  const [applications, totalCount, prefill] = await Promise.all([
+  const [applications, totalCount] = await Promise.all([
     prisma.application.findMany({
       where: whereClause,
       include: {
@@ -33,7 +32,6 @@ export default async function ApplicationsPage({
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     }),
     prisma.application.count({ where: whereClause }),
-    getDiscoveryPrefill(),
   ]);
 
   const hasMore = applications.length > PAGE_SIZE;
@@ -44,13 +42,13 @@ export default async function ApplicationsPage({
   const now = new Date();
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="page-stack">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Applications{totalCount > 0 && <span className="ml-2 text-xl font-normal text-muted-foreground">({totalCount})</span>}
           </h1>
-          <p className="mt-2 text-base text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">
             Track every application from applied to offer — or rejection.
           </p>
         </div>
@@ -58,14 +56,10 @@ export default async function ApplicationsPage({
 
       <JobPaste />
 
-      <JobDiscovery
-        prefillQuery={prefill.query}
-        prefillLocation={prefill.location}
-        prefillWorkModel={prefill.workModel}
-      />
+      <JobDiscovery />
 
       {visibleApplications.length === 0 && !cursor ? (
-        <div className="rounded-xl border border-dashed border-border p-16 text-center bg-muted/30">
+        <div className="panel-soft p-10 text-center sm:p-16">
           <p className="text-base font-medium text-foreground">No applications tracked yet</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Paste a job or discover one above to start.
@@ -73,7 +67,54 @@ export default async function ApplicationsPage({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+          <div className="mobile-card-list md:hidden">
+            {visibleApplications.map((application) => (
+              <article key={application.id} className="panel p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {application.job.company ?? "Company unknown"}
+                    </p>
+                    <Link
+                      href={`/dashboard/applications/${application.id}`}
+                      className="mt-1 block text-base font-bold leading-snug text-foreground underline-offset-2 hover:underline"
+                    >
+                      {application.job.title}
+                    </Link>
+                  </div>
+                  <DeleteApplicationButton
+                    applicationId={application.id}
+                    label={`${application.job.company ?? application.job.title} — ${application.job.title}`}
+                  />
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {application.job.matchScore === null ? (
+                    <span className="badge border-border text-muted-foreground">No score</span>
+                  ) : (
+                    <span className={`badge ${matchBadgeClass(application.job.matchScore)}`}>
+                      {application.job.matchScore}% match
+                    </span>
+                  )}
+                  <span className={`badge ${statusBadgeClass(application.status)}`}>
+                    <span className={`h-2 w-2 rounded-full ${statusDotClass(application.status)}`} />
+                    {statusLabel(application.status)}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                  <span className="text-xs text-muted-foreground">
+                    Last event: {application.statusEvents[0]?.createdAt.toLocaleDateString() ?? "None"}
+                  </span>
+                  {isLikelyGhosted(
+                    application.status,
+                    application.statusEvents[0]?.createdAt ?? null,
+                    now,
+                  ) && <GhostedButton applicationId={application.id} />}
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-border bg-card shadow-sm md:block">
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -107,7 +148,7 @@ export default async function ApplicationsPage({
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : (
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${matchBadgeClass(application.job.matchScore)}`}
+                          className={`badge ${matchBadgeClass(application.job.matchScore)}`}
                         >
                           {application.job.matchScore}%
                         </span>
@@ -115,7 +156,7 @@ export default async function ApplicationsPage({
                     </td>
                     <td className="px-4 py-4">
                       <span
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${statusBadgeClass(application.status)}`}
+                        className={`badge ${statusBadgeClass(application.status)}`}
                       >
                         <span
                           className={`h-2 w-2 rounded-full ${statusDotClass(application.status)}`}
@@ -146,11 +187,11 @@ export default async function ApplicationsPage({
             </table>
           </div>
           {(hasPrev || hasMore) && (
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between gap-3">
               {hasPrev ? (
                 <Link
                   href="/dashboard/applications"
-                  className="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium transition-all hover:bg-[#f4f4f5] hover:border-foreground/20"
+                  className="btn btn-secondary"
                 >
                   ← First page
                 </Link>
@@ -158,7 +199,7 @@ export default async function ApplicationsPage({
               {nextCursor ? (
                 <Link
                   href={`/dashboard/applications?cursor=${nextCursor}`}
-                  className="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium transition-all hover:bg-[#f4f4f5] hover:border-foreground/20"
+                  className="btn btn-secondary"
                 >
                   Next page →
                 </Link>

@@ -37,11 +37,12 @@ export default async function ApplicationDetailPage({
     application.documents.find((d) => d.type === "COVER_LETTER") ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{job.title}</h1>
-          <p className="mt-1 text-muted-foreground">
+          <p className="eyebrow">Application detail</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{job.title}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
             {[job.company, job.location].filter(Boolean).join(" · ") || "Company unknown"}
             {job.salaryMin !== null && job.salaryMax !== null
               ? ` · $${job.salaryMin.toLocaleString()}–$${job.salaryMax.toLocaleString()}`
@@ -51,7 +52,7 @@ export default async function ApplicationDetailPage({
         <Link
           href="/dashboard/applications"
           aria-label="Close and return to applications"
-          className="rounded-md border p-2 text-muted-foreground hover:text-foreground"
+          className="btn btn-secondary h-10 min-h-0 w-10 shrink-0 p-0"
         >
           <svg
             width="16"
@@ -68,18 +69,18 @@ export default async function ApplicationDetailPage({
         </Link>
       </div>
 
-      <section className="rounded-lg border p-5">
-        <div className="flex items-center justify-between gap-4">
+      <section className="panel p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">Match score</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               How this job fits your master profile.
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             {job.matchScore !== null && (
               <span
-                className={`rounded-full border px-3 py-1 text-lg font-semibold ${matchBadgeClass(job.matchScore)}`}
+                className={`badge px-3 py-2 text-base ${matchBadgeClass(job.matchScore)}`}
               >
                 {job.matchScore}%
               </span>
@@ -98,7 +99,7 @@ export default async function ApplicationDetailPage({
             <p className="text-sm leading-relaxed">{job.matchReasoning}</p>
 
             {details.recommendation === "skip" && (
-              <div className="rounded-md border border-status-rejected/40 p-3 text-sm text-status-rejected">
+              <div className="rounded-md border border-status-rejected/40 bg-status-rejected/5 p-3 text-sm text-status-rejected">
                 <strong>Why you might skip this:</strong> below the fit bar and
                 the AI recommends passing on it.
               </div>
@@ -185,7 +186,7 @@ export default async function ApplicationDetailPage({
         masterCvText={application.masterCv?.textContent ?? null}
       />
 
-      <section className="rounded-lg border p-5">
+      <section className="panel p-5 sm:p-6">
         <h2 className="font-semibold">Job details</h2>
         <div className="mt-3 space-y-4 text-sm">
           {job.description && (
@@ -221,7 +222,7 @@ export default async function ApplicationDetailPage({
         </div>
       </section>
 
-      <section className="rounded-lg border p-5">
+      <section className="panel p-5 sm:p-6">
         <h2 className="font-semibold">Status history</h2>
         <StatusControl
           applicationId={application.id}
@@ -234,7 +235,7 @@ export default async function ApplicationDetailPage({
         ) : (
           <ul className="mt-3 space-y-2 text-sm">
             {application.statusEvents.map((event) => (
-              <li key={event.id} className="flex justify-between gap-4 border-b pb-2 last:border-0">
+              <li key={event.id} className="flex flex-col justify-between gap-1 border-b border-border pb-3 last:border-0 sm:flex-row sm:gap-4">
                 <span>
                   {event.from
                     ? `${statusLabel(event.from)} → ${statusLabel(event.to)}`

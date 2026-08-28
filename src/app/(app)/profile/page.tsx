@@ -32,11 +32,11 @@ export default async function ProfilePage() {
     : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Master candidate profile</h1>
-        <p className="text-muted-foreground">
-          Your single source of truth for CVs, cover letters, and match scores.
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Profile</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Keep your experience, skills, and preferences in one place.
         </p>
       </div>
 
