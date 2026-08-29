@@ -38,8 +38,8 @@ export default async function ApplicationDetailPage({
 
   return (
     <div className="page-stack">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-4 max-w-full">
+        <div className="min-w-0 flex-1">
           <p className="eyebrow">Application detail</p>
           <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{job.title}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
@@ -70,14 +70,14 @@ export default async function ApplicationDetailPage({
       </div>
 
       <section className="panel p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-full">
+          <div className="min-w-0 flex-1">
             <h2 className="font-semibold">Match score</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               How this job fits your master profile.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
             {job.matchScore !== null && (
               <span
                 className={`badge px-3 py-2 text-base ${matchBadgeClass(job.matchScore)}`}

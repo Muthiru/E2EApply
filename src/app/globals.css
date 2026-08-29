@@ -326,3 +326,12 @@ html {
     padding-inline: 2rem;
   }
 }
+
+/* Mobile-specific horizontal scroll prevention */
+@media (max-width: 639px) {
+  .page-stack,
+  .panel {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}

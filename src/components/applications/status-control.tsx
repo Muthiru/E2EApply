@@ -69,7 +69,7 @@ export function StatusControl({
         <button
           type="button"
           onClick={handleUpdate}
-          disabled={isPending || status === current}
+          disabled={isPending}
           className="btn btn-secondary"
         >
           {isPending ? "Updating…" : "Update status"}

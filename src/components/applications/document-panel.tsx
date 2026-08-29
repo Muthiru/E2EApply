@@ -587,7 +587,7 @@ function DocumentPanelInner({
         onClick={() =>
           setEditing((current) => (current === type ? null : type))
         }
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
       >
         {editing === type ? "Done editing" : "Edit"}
       </button>
@@ -595,21 +595,21 @@ function DocumentPanelInner({
         type="button"
         onClick={() => handleSaveFinal(type)}
         disabled={saving}
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
       >
         {saving ? "Saving…" : "Save as final"}
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
         download
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm"
+        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
       >
         Download DOCX
       </a>
       <a
         href={pdfHref(type)}
         download
-        className="btn btn-primary min-h-9 px-3 py-1.5 text-sm"
+        className="btn btn-primary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
       >
         Download PDF
       </a>
@@ -646,8 +646,8 @@ function DocumentPanelInner({
 
   return (
     <section className="panel p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between max-w-full">
+        <div className="min-w-0 flex-1">
           <h2 className="font-semibold">Tailored documents</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Preview the generated CV and cover letter, edit them, and download
@@ -658,7 +658,7 @@ function DocumentPanelInner({
           type="button"
           onClick={handleGenerate}
           disabled={generating}
-          className="btn btn-primary w-full sm:w-auto"
+          className="btn btn-primary w-full sm:w-auto min-w-0"
         >
           {generateText}
         </button>
