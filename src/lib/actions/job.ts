@@ -9,6 +9,7 @@ import { getApplicationContext } from "@/lib/job/context";
 import { fetchJobPageText, isLinkedInSearchUrl, normalizeUrl } from "@/lib/job/fetch";
 import type { ApplicationStatus } from "@prisma/client";
 import {
+  hasJobPostingEvidence,
   JOB_RULES,
   JOB_SCHEMA_DESCRIPTION,
   sanitizeJobFromAi,
@@ -78,6 +79,13 @@ export async function addJobFromText(
           ),
       };
     }
+      if (!hasJobPostingEvidence(text)) {
+        return {
+          ok: false,
+          error:
+            "That URL does not appear to contain a job posting. Open a specific job listing or paste the job description instead.",
+        };
+      }
   }
 
   const ai = getAiProvider();
@@ -114,6 +122,13 @@ export async function addJobFromText(
       error: effectiveUrl
         ? "The page didn't contain a readable job posting (many sites — LinkedIn, Workday — render jobs in a browser). Open the posting and paste its description text instead."
         : "Couldn't read the job from the pasted text. Make sure it's a complete job description.",
+    };
+  }
+
+  if (!job.description && !job.requirements) {
+    return {
+      ok: false,
+      error: "The content did not contain enough job details to create a posting.",
     };
   }
 

@@ -299,6 +299,52 @@ Document (generated CV/cover letter files, versioned)
 
 *(verified 2026-08-24: 128 tests (10 files), lint 0, tsc 0, production build OK)*
 
+### Phase 1.13 — Job Discovery Source Validation (completed 2026-09-04)
+**Goal:** Prevent portfolio, personal website, and general web pages from appearing as job-search results or being saved as tracked jobs.
+
+- [x] Discovery candidates are restricted to the configured job-board and ATS domains through a single `isDiscoverableJobUrl` policy.
+- [x] Exa no longer falls back to an unrestricted whole-web search when approved job-board results are sparse.
+- [x] Jina, Exa, RSS, and board candidates all use the same approved-source validation before ranking and display.
+- [x] URL-based job ingestion requires deterministic job-posting evidence and rejects portfolio/personal-page signals before AI extraction.
+- [x] Job creation rejects AI output that contains only a title without description or requirements.
+- [x] Regression tests cover custom-domain portfolios, approved ATS URLs, personal-page text, and non-job content.
+
+*(verified 2026-09-04: 133 tests (10 files), lint 0, TypeScript 0, Prisma validate OK, and production build OK)*
+
+### Phase 1.14 — Discovery Coverage and Query Intent Fix (completed 2026-09-04)
+**Goal:** Ensure the approved-source policy improves result quality without collapsing the number of relevant jobs returned.
+
+- [x] Removed the artificial board-channel reduction from seven candidates when the user requests ten results.
+- [x] Filtered invalid board links before applying result limits so bad feed entries cannot hide valid jobs later in the feed.
+- [x] Preserved trusted RSS/board links that point to employer-hosted job pages while keeping web-search candidates restricted to approved domains.
+- [x] Added Jina fallback when Exa is configured but returns no usable candidates.
+- [x] Added explicit `jobs` intent to role-only provider queries; Exa had been returning LinkedIn profiles for queries such as `Full stack developer` despite its job-listing category.
+- [x] Verified live behavior: `Full stack developer` returned 10 final candidates, with board and Exa channels both contributing job postings and no personal profile URLs.
+
+*(verified 2026-09-04: 134 tests (10 files), lint 0, TypeScript 0, Prisma validate OK, and production build OK)*
+
+### Phase 1.15 — Fresh Job Results (completed 2026-09-04)
+**Goal:** Keep stale postings out of discovery and show dated jobs published within the previous seven days.
+
+- [x] Standardized RSS, RemoteOK, Remotive, Jobicy, and The Muse date filtering to a seven-day freshness window.
+- [x] Preserve Exa `publishedDate` and enforce the same seven-day window during candidate filtering and final ranking.
+- [x] Detect and exclude relative stale indicators such as `3 months ago` in provider result text.
+- [x] Removed the old ranking fallback that could re-add stale candidates after freshness filtering.
+- [x] Added regression coverage for candidates older than seven days.
+
+**Known limitation:** Some feeds do not provide a publication date. Those results remain eligible unless their content explicitly identifies them as stale; rejecting all undated results would remove a large portion of otherwise valid board inventory.
+
+*(verified 2026-09-04: 135 tests (10 files), lint 0, TypeScript 0, Prisma validate OK, production build OK)*
+
+### Phase 1.16 — Remotive Source Removal (completed 2026-09-04)
+**Goal:** Remove Remotive after live results showed stale and inaccurate roles.
+
+- [x] Removed Remotive from the approved discovery-domain list.
+- [x] Removed the Remotive RSS/API source and dedicated API fetcher.
+- [x] Removed obsolete Remotive parser tests so the source cannot be reintroduced unnoticed.
+
+*(verified 2026-09-04: 134 tests (10 files), lint 0, TypeScript 0, Prisma validate OK, production build OK, and no active Remotive references remain)*
+
 ---
 
 ## Phase 2 — Email intelligence (Effort: M) (active 2026-08-23)

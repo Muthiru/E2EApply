@@ -1,5 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeJobFromAi } from "./extract";
+import { hasJobPostingEvidence, sanitizeJobFromAi } from "./extract";
+
+describe("hasJobPostingEvidence", () => {
+  it("accepts text containing hiring and qualification signals", () => {
+    expect(
+      hasJobPostingEvidence(
+        "We are hiring a Full Stack Developer. Responsibilities include building web applications. Requirements: experience with TypeScript. Apply today.",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects portfolio and personal website content", () => {
+    expect(
+      hasJobPostingEvidence(
+        "Full Stack Developer portfolio. About me, my projects, and the technologies I use to build websites.",
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects short or non-job text", () => {
+    expect(hasJobPostingEvidence("Full Stack Developer and software projects")).toBe(false);
+  });
+});
 
 describe("sanitizeJobFromAi", () => {
   it("extracts a valid job", () => {
