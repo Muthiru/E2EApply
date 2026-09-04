@@ -32,6 +32,18 @@ export const JOB_RULES = `Rules:
 - "sourceUrl": the posting URL if provided, otherwise null.
 - Output valid JSON only — no markdown, no commentary.`;
 
+const JOB_TEXT_SIGNAL_GROUPS = [
+  /\b(?:hiring|join|looking\s+for|seeking|responsibilities|what\s+you(?:'|’)ll\s+do|apply)\b/i,
+  /\b(?:qualifications?|requirements?|experience\s+with|years?\s+of\s+experience|salary|employment\s+type|full[- ]time|part[- ]time|contract|remote|hybrid|onsite)\b/i,
+];
+
+const PERSONAL_PAGE_SIGNALS = /\b(?:portfolio|about\s+me|personal\s+site|hire\s+me|open\s+to\s+work|my\s+projects?)\b/i;
+
+export function hasJobPostingEvidence(text: string): boolean {
+  if (text.trim().length < 80 || PERSONAL_PAGE_SIGNALS.test(text)) return false;
+  return JOB_TEXT_SIGNAL_GROUPS.filter((pattern) => pattern.test(text)).length >= 2;
+}
+
 export function sanitizeJobFromAi(input: unknown): JobDraft | null {
   if (!isRecord(input)) return null;
 

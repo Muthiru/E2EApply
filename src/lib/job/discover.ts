@@ -3,6 +3,7 @@ export type DiscoverCandidate = {
   company: string | null;
   url: string;
   snippet: string | null;
+  publishedAt?: string | null;
   source: "exa" | "jina" | "rss" | "board";
   estimatedMatch: number | null;
   matchedSkills: string[];
@@ -17,6 +18,12 @@ export type ChannelReport = {
 
 const SEARCH_LIMIT = 10;
 const TIMEOUT_MS = 20_000;
+const FRESHNESS_DAYS = 7;
+
+function firstString(...values: unknown[]): string | undefined {
+  const value = values.find((entry) => typeof entry === "string");
+  return typeof value === "string" ? value : undefined;
+}
 
 const SHORT_QUERY_TERMS = new Set([
   "ai",
@@ -43,7 +50,6 @@ const JOB_BOARD_DOMAINS = [
   "wellfound.com",
   "himalayas.app",
   "remoteok.com",
-  "remotive.com",
   "jobicy.com",
   "themuse.com",
   "weworkremotely.com",
@@ -273,6 +279,22 @@ export function isJobPostingUrl(url: string): boolean {
   return !PROFILE_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
+export function isDiscoverableJobUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isApprovedSource = JOB_BOARD_DOMAINS.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+
+  return isApprovedSource && isJobPostingUrl(url);
+}
+
 export function isJobPostingTitle(title: string): boolean {
   const nameAndRole = PERSONAL_NAME_TITLE_PATTERN.exec(title);
   const personalPortfolio =
@@ -288,9 +310,14 @@ export function isJobPostingTitle(title: string): boolean {
 }
 
 function keepCandidate(candidate: DiscoverCandidate): boolean {
+  const sourceUrlIsAllowed =
+    candidate.source === "board" || candidate.source === "rss"
+      ? isJobPostingUrl(candidate.url)
+      : isDiscoverableJobUrl(candidate.url);
+
   return (
     candidate.title.length > 0 &&
-    isJobPostingUrl(candidate.url) &&
+    sourceUrlIsAllowed &&
     isJobPostingTitle(candidate.title)
   );
 }
@@ -396,7 +423,7 @@ async function searchExa(
   }
 
   const payload = (await response.json()) as {
-    results?: { title?: string; url?: string; text?: string }[];
+    results?: { title?: string; url?: string; text?: string; publishedDate?: string }[];
   };
 
   return (payload.results ?? [])
@@ -404,7 +431,8 @@ async function searchExa(
       (result) =>
         result.title &&
         result.url?.startsWith("http") &&
-        isJobPostingUrl(result.url) &&
+        isRecentDate(result.publishedDate) &&
+        isDiscoverableJobUrl(result.url) &&
         isJobPostingTitle(result.title ?? ""),
     )
     .map((result) => ({
@@ -412,6 +440,7 @@ async function searchExa(
       company: null,
       url: result.url as string,
       snippet: result.text ? stripHtml(result.text.trim()) || null : null,
+      publishedAt: result.publishedDate ?? null,
       source: "exa" as const,
       estimatedMatch: null,
       matchedSkills: [],
@@ -426,15 +455,7 @@ export async function searchWithExa(
 ): Promise<DiscoverCandidate[]> {
   const fetchLimit = Math.max(limit, limit * 2);
   const focused = await searchExa(query, fetchLimit, apiKey, JOB_BOARD_DOMAINS);
-  if (focused.length >= limit) {
-    return rankCandidatesByQuery(focused, query).slice(0, limit);
-  }
-
-  const broad = await searchExa(query, fetchLimit, apiKey);
-  return rankCandidatesByQuery(
-    dedupeCandidates([...focused, ...broad]),
-    query,
-  ).slice(0, limit);
+  return rankCandidatesByQuery(focused, query).slice(0, limit);
 }
 
 export async function searchJobCandidates(
@@ -451,7 +472,6 @@ export async function searchJobCandidates(
 export const JOB_FEED_SOURCES: { name: string; url: string }[] = [
   { name: "We Work Remotely", url: "https://weworkremotely.com/remote-jobs.rss" },
   { name: "RemoteOK", url: "https://remoteok.com/remote-jobs.rss" },
-  { name: "Remotive", url: "https://remotive.com/api/remote-jobs?category=software-dev&limit=50" },
   { name: "HackerNews Jobs", url: "https://hnrss.org/jobs" },
   { name: "ReactJobs", url: "https://reactjs.jobboard.io/jobs.rss" },
   { name: "Python.org", url: "https://www.python.org/jobs/feed/rss/" },
@@ -484,17 +504,16 @@ function stripHtml(value: string): string {
   return value.replace(/<\/?[A-Za-z][^<>]*>/g, "").trim();
 }
 
-function isRecentDate(dateString?: string): boolean {
-  if (!dateString) return true; // If no date, assume it's recent
-  
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-    return date >= ninetyDaysAgo;
-  } catch {
-    return true; // If date parsing fails, assume it's recent
-  }
+function isRecentDate(dateString?: string | null): boolean {
+  if (!dateString) return true;
+
+  const timestamp = Date.parse(dateString);
+  if (Number.isNaN(timestamp)) return true;
+
+  const now = Date.now();
+  const freshnessWindow = FRESHNESS_DAYS * 24 * 60 * 60 * 1000;
+  const futureTolerance = 24 * 60 * 60 * 1000;
+  return timestamp >= now - freshnessWindow && timestamp <= now + futureTolerance;
 }
 
 export function parseRss(xml: string): RssItem[] {
@@ -592,6 +611,7 @@ export function filterRssItems(
       company: extractCompanyFromRss(scored.item.title, scored.item.description),
       url: scored.item.link,
       snippet: stripHtml(scored.item.description.slice(0, 500)) || null,
+      publishedAt: scored.item.pubDate ?? null,
       source: "rss" as const,
       estimatedMatch: null,
       matchedSkills: [],
@@ -668,57 +688,6 @@ export async function fetchRemoteOkJobs(): Promise<BoardJob[]> {
   return parseRemoteOkPayload(payload);
 }
 
-export function parseRemotivePayload(payload: {
-  jobs?: {
-    title?: unknown;
-    company_name?: unknown;
-    url?: unknown;
-    location?: unknown;
-    tags?: unknown;
-    description?: unknown;
-    publication_date?: unknown;
-  }[];
-}): BoardJob[] {
-  return (payload.jobs ?? [])
-    .filter(
-      (job): job is { title: string; url: string } & typeof job =>
-        typeof job.title === "string" && typeof job.url === "string",
-    )
-    .map((job) => ({
-      title: job.title.trim(),
-      company:
-        typeof job.company_name === "string"
-          ? job.company_name.trim() || null
-          : null,
-      url: job.url,
-      location:
-        typeof job.location === "string" ? job.location.trim() || null : null,
-      tags: Array.isArray(job.tags) ? job.tags.map(String) : [],
-      snippet: typeof job.description === "string" ? stripHtml(job.description.trim()) || null : null,
-      date: typeof job.publication_date === "string" ? job.publication_date : undefined,
-    }))
-    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url) && isRecentDate(job.date));
-}
-
-export async function fetchRemotiveJobs(
-  query: string,
-  limit = SEARCH_LIMIT,
-): Promise<BoardJob[]> {
-  const params = new URLSearchParams({
-    search: query,
-    limit: String(Math.max(10, limit * 2)),
-  });
-  const response = await fetch(`https://remotive.com/api/remote-jobs?${params}`, {
-    headers: { accept: "application/json" },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    throw new Error("Remotive returned an error — try again.");
-  }
-  const payload = (await response.json()) as Parameters<typeof parseRemotivePayload>[0];
-  return parseRemotivePayload(payload);
-}
-
 export function parseJobicyPayload(payload: {
   jobs?: {
     jobTitle?: unknown;
@@ -727,6 +696,9 @@ export function parseJobicyPayload(payload: {
     jobGeo?: unknown;
     jobIndustry?: unknown;
     jobExcerpt?: unknown;
+    jobPosted?: unknown;
+    datePosted?: unknown;
+    publishedAt?: unknown;
   }[];
 }): BoardJob[] {
   return (payload.jobs ?? [])
@@ -749,8 +721,9 @@ export function parseJobicyPayload(payload: {
         typeof job.jobExcerpt === "string" && job.jobExcerpt.trim().length > 0
           ? stripXml(job.jobExcerpt)
           : null,
+      date: firstString(job.jobPosted, job.datePosted, job.publishedAt),
     }))
-    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url));
+    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url) && isRecentDate(job.date));
 }
 
 export async function fetchJobicyJobs(count = 50): Promise<BoardJob[]> {
@@ -804,8 +777,9 @@ export function parseMusePayload(payload: {
         .map((category) => (typeof category.name === "string" ? category.name : ""))
         .filter(Boolean),
       snippet: null,
+      date: typeof job.publication_date === "string" ? job.publication_date : undefined,
     }))
-    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url));
+    .filter((job) => job.title.length > 0 && /^https?:\/\//.test(job.url) && isRecentDate(job.date));
 }
 
 export async function fetchMuseJobs(): Promise<BoardJob[]> {
@@ -824,7 +798,11 @@ export async function fetchMuseJobs(): Promise<BoardJob[]> {
 }
 
 export function buildJobSearchQuery(query: string): string {
-  return query.trim().replace(/\s+/g, " ");
+  const normalized = query.trim().replace(/\s+/g, " ");
+  if (/\b(?:job|jobs|hiring|career|careers|opening|openings|vacancy|vacancies)\b/i.test(normalized)) {
+    return normalized;
+  }
+  return `${normalized} jobs`;
 }
 
 function queryWords(query: string): string[] {
@@ -852,143 +830,140 @@ export function scoreByQueryWords(text: string, query: string): number {
   );
 }
 
+type RankedCandidate = {
+  candidate: DiscoverCandidate;
+  score: number;
+  titleScore: number;
+};
+
+function getLocationQuery(query: string): { location: string | null; queryWithoutLocation: string } {
+  const locationMarker = /\b(?:in|at|@)[ \t]+/i.exec(query);
+  if (!locationMarker) return { location: null, queryWithoutLocation: query };
+
+  const location = query
+    .slice(locationMarker.index + locationMarker[0].length)
+    .trim()
+    .toLowerCase();
+  const escapedLocation = location.replace(/\s+/g, String.raw`\s+`);
+  const queryWithoutLocation = query
+    .replace(
+      new RegExp(String.raw`\b(?:in|at|@)\s+${escapedLocation}\b`, "i"),
+      "",
+    )
+    .trim();
+
+  return { location, queryWithoutLocation };
+}
+
+function candidateLocationText(candidate: DiscoverCandidate): string {
+  return [candidate.title, candidate.company, candidate.snippet]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function scoreCandidate(
+  candidate: DiscoverCandidate,
+  query: string,
+): RankedCandidate {
+  const titleScore = scoreByQueryWords(candidate.title, query);
+  const snippetScore = scoreByQueryWords(
+    [candidate.company, candidate.snippet].filter(Boolean).join(" "),
+    query,
+  );
+  const queryScore = (titleScore * 3) + snippetScore;
+  let score = queryScore;
+
+  if (candidate.source === "board" || candidate.source === "rss") score += 2;
+  if (candidate.company && queryScore > 0) score += 1;
+
+  return { candidate, score, titleScore };
+}
+
+function hasExactLocation(entry: RankedCandidate, location: string): boolean {
+  return candidateLocationText(entry.candidate).includes(location);
+}
+
+function hasRelaxedLocation(entry: RankedCandidate, location: string): boolean {
+  const locationText = candidateLocationText(entry.candidate);
+  return locationText.includes(location) ||
+    locationText.includes(location.substring(0, 3)) ||
+    locationText.includes(`${location} `) ||
+    locationText.includes(` ${location}`);
+}
+
+function filterByLocation(
+  entries: RankedCandidate[],
+  location: string | null,
+): RankedCandidate[] {
+  if (!location) return entries;
+  return entries.filter((entry) => hasExactLocation(entry, location));
+}
+
+function filterByRelaxedLocation(
+  entries: RankedCandidate[],
+  location: string | null,
+): RankedCandidate[] {
+  if (!location) return entries;
+  return entries.filter((entry) => hasRelaxedLocation(entry, location));
+}
+
 export function rankCandidatesByQuery(
   candidates: DiscoverCandidate[],
   query: string,
 ): DiscoverCandidate[] {
-  // Extract location from query if present (e.g., "jobs in poland", "in London")
-  const locationMarker = /\b(?:in|at|@)[ \t]+/i.exec(query);
-  const location = locationMarker
-    ? query.slice(locationMarker.index + locationMarker[0].length).trim().toLowerCase()
-    : null;
-  
-  // Remove location from query for role matching
-  const escapedLocation = location?.replace(/\s+/g, String.raw`\s+`);
-  const queryWithoutLocation = location 
-    ? query.replace(
-      new RegExp(
-        String.raw`\b(?:in|at|@)\s+${escapedLocation}\b`,
-        "i",
-      ),
-      "",
-    ).trim()
-    : query;
-
+  const { location, queryWithoutLocation } = getLocationQuery(query);
   const ranked = candidates
-    .map((candidate) => {
-      // Score title more heavily than snippet
-      const titleScore = scoreByQueryWords(candidate.title, queryWithoutLocation);
-      const snippetScore = scoreByQueryWords(
-        [candidate.company, candidate.snippet].filter(Boolean).join(" "),
-        queryWithoutLocation
-      );
-      
-      // Title matches are worth 3x snippet matches
-      const queryScore = (titleScore * 3) + snippetScore;
-      let score = queryScore;
-      
-      // Boost board/rss sources
-      if (candidate.source === "board" || candidate.source === "rss") score += 2;
-      if (candidate.company && queryScore > 0) score += 1;
-      
-      // Location matching - strict penalty for non-matches
-      if (location) {
-        const locationHaystack = [
-          candidate.title,
-          candidate.company,
-          candidate.snippet,
-        ].filter(Boolean).join(" ").toLowerCase();
-        
-        if (locationHaystack.includes(location)) {
-          score += 3; // Strong bonus for location match
-        } else {
-          // Heavy penalty for results that don't match location
-          score -= 5;
-        }
-      }
-      
-      return { candidate, score, queryScore, titleScore };
-    })
+    .map((candidate) => scoreCandidate(candidate, queryWithoutLocation))
     .sort((a, b) => b.score - a.score);
+  const titleMatches = ranked.filter((entry) => entry.titleScore >= 1);
+  const locationMatches = filterByLocation(titleMatches, location);
+  const relaxedMatches = locationMatches.length > 0
+    ? locationMatches
+    : filterByRelaxedLocation(titleMatches, location);
+  const recentTitleMatches = titleMatches.filter(
+    ({ candidate }) =>
+      isRecentDate(candidate.publishedAt) && !isLikelyOldCandidate(candidate),
+  );
 
-  // Strict filtering - require title relevance (at least 1 title word match)
-  let filtered = ranked.filter((entry) => entry.titleScore >= 1);
-
-  // Strict location filtering when specified
-  if (location) {
-    filtered = filtered.filter((entry) => {
-      const locationHaystack = [
-        entry.candidate.title,
-        entry.candidate.company,
-        entry.candidate.snippet,
-      ].filter(Boolean).join(" ").toLowerCase();
-      return locationHaystack.includes(location);
-    });
+  if (relaxedMatches.length === 0) {
+    return recentTitleMatches.slice(0, 5).map(({ candidate }) => candidate);
   }
 
-  // If no candidates meet the strict criteria, try relaxed location filtering
-  if (filtered.length === 0 && location) {
-    filtered = ranked.filter((entry) => {
-      if (entry.titleScore < 1) return false;
-      // Allow partial location matches (e.g., "poland" matching "polish")
-      const locationHaystack = [
-        entry.candidate.title,
-        entry.candidate.company,
-        entry.candidate.snippet,
-      ].filter(Boolean).join(" ").toLowerCase();
-      
-      // Check for exact match or common variations
-      return locationHaystack.includes(location) || 
-             locationHaystack.includes(location.substring(0, 3)) || // First 3 chars
-             locationHaystack.includes(location + " ") ||
-             locationHaystack.includes(" " + location);
-    });
-  }
-
-  // Final fallback - return top results with good title matches
-  if (filtered.length === 0) {
-    const fallback = ranked.filter((entry) => entry.titleScore >= 1).slice(0, 5);
-    return fallback.map(({ candidate }) => candidate);
-  }
-
-  // Filter out likely old candidates based on content analysis
-  const recentCandidates = filtered.filter(({ candidate }) => !isLikelyOldCandidate(candidate));
-
-  // If filtering removes too many results, return the original filtered results
-  if (recentCandidates.length < Math.max(2, filtered.length / 2)) {
-    return filtered.map(({ candidate }) => candidate);
-  }
-
-  return recentCandidates.map(({ candidate }) => candidate);
+  return relaxedMatches.filter(
+    ({ candidate }) =>
+      isRecentDate(candidate.publishedAt) && !isLikelyOldCandidate(candidate),
+  ).map(({ candidate }) => candidate);
 }
 
-// Helper function to check if a candidate appears to be old based on content analysis
+function relativeAgeInDays(amount: number, unit: string): number {
+  switch (unit) {
+    case "day":
+      return amount;
+    case "week":
+      return amount * 7;
+    case "month":
+      return amount * 30;
+    default:
+      return amount * 365;
+  }
+}
+
+function containsPastYear(text: string): boolean {
+  const yearMatch = /\b(20\d{2})\b/.exec(text);
+  return Boolean(yearMatch && Number.parseInt(yearMatch[1], 10) < new Date().getFullYear());
+}
+
 export function isLikelyOldCandidate(candidate: DiscoverCandidate): boolean {
   const text = [candidate.title, candidate.company, candidate.snippet].join(" ").toLowerCase();
-  
-  // Check for indicators of old postings
-  const oldIndicators = [
-    /\b(feb|jan|march|april|may|june|july|aug|sept|oct|nov|dec)\s+\d{4}\b/i, // Specific dates in past
-    /\b(2019|2020|2021|2022|2023)\b/i, // Old years
-    /\b(urgent|immediately|asap)\b/i, // Sometimes indicates old reposts
-  ];
-  
-  // If it has specific past dates or old years, it's likely old
-  for (const pattern of oldIndicators) {
-    if (pattern.test(text)) {
-      // Check if the year is specifically in the past
-      const yearMatch = /\b(20\d{2})\b/.exec(text);
-      if (yearMatch) {
-        const year = Number.parseInt(yearMatch[1], 10);
-        const currentYear = new Date().getFullYear();
-        if (year < currentYear) {
-          return true;
-        }
-      }
-    }
+
+  const relativeAge = /\b(\d+)\s+(day|week|month|year)s?\s+ago\b/i.exec(text);
+  if (relativeAge) {
+    const amount = Number.parseInt(relativeAge[1], 10);
+    if (relativeAgeInDays(amount, relativeAge[2].toLowerCase()) > FRESHNESS_DAYS) return true;
   }
-  
-  return false;
+
+  return containsPastYear(text);
 }
 
 export function filterBoardCandidates(
@@ -1013,7 +988,6 @@ export function filterBoardCandidates(
     })
     .filter((scored) => scored.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit * 2)
     .map((scored) => {
       const location = "location" in scored.job ? scored.job.location : null;
       const tags = "tags" in scored.job ? (scored.job.tags ?? []) : [];
@@ -1026,6 +1000,7 @@ export function filterBoardCandidates(
           ([location, tags.slice(0, 4).join(", ")]
             .filter(Boolean)
             .join(" — ") || null),
+          publishedAt: "date" in scored.job ? scored.job.date ?? null : null,
         source: "board" as const,
         estimatedMatch: null,
         matchedSkills: [],
@@ -1041,7 +1016,6 @@ export async function searchWithBoards(
 ): Promise<DiscoverCandidate[]> {
   const settled = await Promise.allSettled([
     fetchRemoteOkJobs(),
-    fetchRemotiveJobs(query, limit),
     fetchJobicyJobs(),
     fetchMuseJobs(),
     searchWithRss(query, Math.max(4, Math.ceil(limit / 2))),
@@ -1067,6 +1041,34 @@ export type AgentReachSearchResult = {
   channels: ChannelReport[];
 };
 
+function channelReport(
+  channel: ChannelReport["channel"],
+  result: PromiseSettledResult<DiscoverCandidate[]>,
+): ChannelReport {
+  if (result.status === "fulfilled") {
+    return { channel, ok: true, count: result.value.length };
+  }
+
+  return {
+    channel,
+    ok: false,
+    count: 0,
+    error: result.reason instanceof Error ? result.reason.message : "failed",
+  };
+}
+
+async function searchWithJinaFallback(
+  query: string,
+  limit: number,
+): Promise<{ candidates: DiscoverCandidate[]; report: ChannelReport }> {
+  const result = await Promise.allSettled([searchWithJina(query, limit)]);
+  const report = channelReport("jina", result[0]);
+  return {
+    candidates: result[0].status === "fulfilled" ? result[0].value : [],
+    report,
+  };
+}
+
 export async function agentReachSearch(
   query: string,
   limit = SEARCH_LIMIT,
@@ -1074,34 +1076,26 @@ export async function agentReachSearch(
   const exaKey = process.env.EXA_API_KEY;
 
   const settled = await Promise.allSettled([
-    searchWithBoards(query, Math.max(4, Math.ceil((limit * 2) / 3))),
+    searchWithBoards(query, limit),
     exaKey ? searchWithExa(query, exaKey, limit) : searchWithJina(query, limit),
   ]);
 
   const channels: ChannelReport[] = [
-    {
-      channel: "board",
-      ok: settled[0].status === "fulfilled",
-      count: settled[0].status === "fulfilled" ? settled[0].value.length : 0,
-      ...(settled[0].status === "rejected"
-        ? { error: settled[0].reason instanceof Error ? settled[0].reason.message : "failed" }
-        : {}),
-    },
-    {
-      channel: exaKey ? "exa" : "jina",
-      ok: settled[1].status === "fulfilled",
-      count: settled[1].status === "fulfilled" ? settled[1].value.length : 0,
-      ...(settled[1].status === "rejected"
-        ? { error: settled[1].reason instanceof Error ? settled[1].reason.message : "failed" }
-        : {}),
-    },
+    channelReport("board", settled[0]),
+    channelReport(exaKey ? "exa" : "jina", settled[1]),
   ];
+
+  let webCandidates = settled[1].status === "fulfilled" ? settled[1].value : [];
+
+  if (exaKey && webCandidates.length === 0) {
+    const jinaFallback = await searchWithJinaFallback(query, limit);
+    channels.push(jinaFallback.report);
+    webCandidates = jinaFallback.candidates;
+  }
 
   const candidates = rankCandidatesByQuery(
     dedupeCandidates(
-      settled.flatMap((result) =>
-        result.status === "fulfilled" ? result.value : [],
-      ),
+      [...(settled[0].status === "fulfilled" ? settled[0].value : []), ...webCandidates],
     ),
     query,
   ).slice(0, limit);

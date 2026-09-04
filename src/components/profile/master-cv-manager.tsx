@@ -112,12 +112,12 @@ export function MasterCvManager(props: Readonly<{ cvs: MasterCvBadgeInfo[] }>) {
             {confirmingId && (
                 <dialog
                     open
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                    className="fixed inset-0 z-50 m-0 flex h-screen w-screen max-h-none max-w-none items-center justify-center border-0 bg-black/40 p-4"
                     aria-labelledby="delete-confirm-title"
                     aria-describedby="delete-confirm-description"
                 >
                     <div
-                        className="dialog-enter w-full max-w-sm rounded-lg border bg-background p-6 shadow-xl"
+                        className="dialog-enter max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-lg border bg-background p-6 shadow-xl"
                     >
                         <div className="flex items-start gap-3">
                             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-muted-foreground/40 text-muted-foreground">

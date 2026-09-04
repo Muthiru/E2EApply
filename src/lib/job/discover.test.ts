@@ -4,13 +4,13 @@ import {
   estimateMatch,
   filterBoardCandidates,
   filterTrackedCandidates,
+  isDiscoverableJobUrl,
   isJobPostingTitle,
   isJobPostingUrl,
   parseJinaSearchResults,
   parseJobicyPayload,
   parseMusePayload,
   parseRemoteOkPayload,
-  parseRemotivePayload,
   buildJobSearchQuery,
   rankCandidatesByQuery,
   scoreByQueryWords,
@@ -56,7 +56,7 @@ describe("parseJinaSearchResults", () => {
 
   it("respects the limit", () => {
     const lines = [1, 2, 3, 4, 5].flatMap((n) => [
-      `[Job ${n}](https://example.com/jobs/${n})`,
+      `[Job ${n}](https://jobs.lever.co/acme/${n})`,
       `Snippet for job ${n}.`,
     ]);
 
@@ -68,7 +68,7 @@ describe("parseJinaSearchResults", () => {
       "Some random intro text.",
       "",
       "[](https://example.com/empty-title)",
-      "[Real Job](https://example.com/real)",
+      "[Real Job](https://jobs.lever.co/acme/real)",
       "",
     ].join("\n");
 
@@ -177,6 +177,19 @@ describe("isJobPostingUrl", () => {
   });
 });
 
+describe("isDiscoverableJobUrl", () => {
+  it("accepts configured job boards and ATS sources", () => {
+    expect(isDiscoverableJobUrl("https://jobs.lever.co/acme/backend")).toBe(true);
+    expect(isDiscoverableJobUrl("https://boards.greenhouse.io/acme/jobs/123")).toBe(true);
+  });
+
+  it("rejects custom domains even when their title looks like a job", () => {
+    expect(isDiscoverableJobUrl("https://alexjohnson.dev/")).toBe(false);
+    expect(isDiscoverableJobUrl("https://alexjohnson.dev/projects/full-stack-developer")).toBe(false);
+    expect(isDiscoverableJobUrl("https://acme.com/careers/backend-engineer")).toBe(false);
+  });
+});
+
 describe("isJobPostingTitle", () => {
   it("rejects titles that look like profiles or resumes", () => {
     expect(isJobPostingTitle("John Doe - Profile - LinkedIn")).toBe(false);
@@ -223,7 +236,7 @@ describe("isJobPostingTitle", () => {
 describe("buildJobSearchQuery", () => {
   it("preserves the query while normalizing whitespace", () => {
     expect(buildJobSearchQuery("Senior Go Engineer Berlin")).toBe(
-      "Senior Go Engineer Berlin",
+      "Senior Go Engineer Berlin jobs",
     );
   });
 
@@ -428,6 +441,24 @@ describe("rankCandidatesByQuery", () => {
     expect(isLikelyOldCandidate(candidates[1])).toBe(false);
     expect(isLikelyOldCandidate(candidates[2])).toBe(false);
   });
+
+  it("excludes candidates published more than seven days ago", () => {
+    const candidates = [
+      baseCandidate({
+        title: "Senior Engineer",
+        publishedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+      baseCandidate({
+        title: "Senior Engineer",
+        publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    const ranked = rankCandidatesByQuery(candidates, "senior engineer");
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].publishedAt).toBe(candidates[1].publishedAt);
+  });
 });
 
 describe("dedupeCandidates", () => {
@@ -558,33 +589,6 @@ describe("parseRemoteOkPayload", () => {
   });
 });
 
-describe("parseRemotivePayload", () => {
-  it("maps job fields and drops entries without titles or urls", () => {
-    const payload = {
-      jobs: [
-        {
-          title: "Senior Independent AI Engineer",
-          company_name: "A.Team",
-          url: "https://remotive.com/remote-jobs/software-development/senior-ai-engineer-1919266",
-          location: "Anywhere",
-          tags: ["ai"],
-        },
-        { company_name: "No Title Co", url: "https://example.com/job" },
-      ],
-    };
-
-    const jobs = parseRemotivePayload(payload);
-
-    expect(jobs).toHaveLength(1);
-    expect(jobs[0]).toMatchObject({
-      title: "Senior Independent AI Engineer",
-      company: "A.Team",
-      location: "Anywhere",
-      tags: ["ai"],
-    });
-  });
-});
-
 describe("parseJobicyPayload", () => {
   it("maps job fields and decodes html entities in the excerpt", () => {
     const payload = {
@@ -681,5 +685,41 @@ describe("filterBoardCandidates", () => {
 
   it("returns an empty list when nothing matches", () => {
     expect(filterBoardCandidates(jobs, "design sales", 10)).toHaveLength(0);
+  });
+
+  it("filters invalid board links before applying the result limit", () => {
+    const results = filterBoardCandidates(
+      [
+        {
+          title: "Full Stack Developer",
+          company: "RemoteOK",
+          url: "https://remoteok.com/jobs/search",
+          location: "Remote",
+          tags: ["full-stack"],
+          snippet: null,
+        },
+        {
+          title: "Full Stack Developer",
+          company: "RemoteOK",
+          url: "https://remoteok.com/jobs/profile",
+          location: "Remote",
+          tags: ["full-stack"],
+          snippet: null,
+        },
+        {
+          title: "Full Stack Developer",
+          company: "Acme",
+          url: "https://remoteok.com/jobs/full-stack-developer",
+          location: "Remote",
+          tags: ["full-stack"],
+          snippet: "We are hiring a full stack developer.",
+        },
+      ],
+      "Full Stack Developer",
+      1,
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://remoteok.com/jobs/full-stack-developer");
   });
 });

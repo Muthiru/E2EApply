@@ -131,12 +131,12 @@ export function JobDiscovery({
             type="button"
             onClick={handleSearch}
             disabled={searching || query.trim().length < 2}
-            className="btn btn-primary shrink-0 lg:min-w-[120px]"
+            className="btn btn-primary shrink-0 lg:min-w-30"
           >
             {searching ? (
               <span className="flex items-center gap-2">
                 <span className="animate-spin">⟳</span>
-                Searching…
+                <span>Searching…</span>
               </span>
             ) : (
               "Search"
@@ -237,7 +237,7 @@ export function JobDiscovery({
         </div>
       )}
 
-      {results && results.length === 0 && (
+      {results?.length === 0 && (
         <div className="panel-soft mt-6 p-8 text-center">
           <p className="text-sm font-medium">No jobs found</p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -265,6 +265,9 @@ export function JobDiscovery({
           <ul className="mt-4 space-y-3">
             {results.map((candidate) => {
               const isAdded = addedUrls.has(candidate.url);
+              let actionLabel = "Add to tracker";
+              if (adding) actionLabel = "Adding…";
+              if (isAdded) actionLabel = "✓ Added";
               return (
                 <li
                   key={candidate.url}
@@ -289,6 +292,12 @@ export function JobDiscovery({
                       {candidate.company && (
                         <p className="mt-1 text-xs text-muted-foreground font-medium">
                           {candidate.company}
+                        </p>
+                      )}
+
+                      {candidate.publishedAt && !Number.isNaN(Date.parse(candidate.publishedAt)) && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Posted {new Date(candidate.publishedAt).toLocaleDateString()}
                         </p>
                       )}
                       
@@ -322,9 +331,9 @@ export function JobDiscovery({
                           isAdded 
                             ? "border border-status-offer/30 bg-status-offer/10 text-status-offer"
                             : "btn-primary"
-                        } disabled:opacity-50 disabled:cursor-not-allowed sm:min-w-[110px]`}
+                        } disabled:opacity-50 disabled:cursor-not-allowed sm:min-w-27.5`}
                       >
-                        {adding ? "Adding…" : isAdded ? "✓ Added" : "Add to tracker"}
+                        {actionLabel}
                       </button>
                     </div>
                   </div>
