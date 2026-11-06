@@ -1,5 +1,12 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ExternalHyperlink } from "docx";
+import type { ParagraphChild } from "docx";
 import { prisma } from "@/lib/prisma";
+import {
+    appendProfileLinksToCoverLetter,
+    appendProfileProjectUrls,
+    linkHref,
+    splitLinkedText,
+} from "@/lib/job/documents";
 
 function buildHeaderParagraphs(
     nameLine: string,
@@ -29,7 +36,16 @@ function buildHeaderParagraphs(
     if (finalLines.length > 0) {
         paragraphs.push(new Paragraph({
             alignment: AlignmentType.CENTER,
-            children: [new TextRun({ text: finalLines.join(" | "), size: 20, font: "Times New Roman" })],
+            children: finalLines.flatMap((line, index) => {
+                const prefix = index > 0 ? [new TextRun({ text: " | ", size: 20, font: "Times New Roman" })] : [];
+                const href = linkHref(line);
+                return href
+                    ? [...prefix, new ExternalHyperlink({
+                        link: href,
+                        children: [new TextRun({ text: line, size: 20, font: "Times New Roman", color: "0563C1", underline: {} })],
+                    })]
+                    : [...prefix, new TextRun({ text: line, size: 20, font: "Times New Roman" })];
+            }),
             spacing: { after: 200 }
         }));
     }
@@ -64,14 +80,14 @@ function lineToDocxParagraph(line: string): Paragraph {
             spacing: { before: 240, after: 120 }
         });
     }
+    const parts = splitLinkedText(line);
     return new Paragraph({
-        children: [
-            new TextRun({
-                text: line,
-                size: 22,
-                font: "Times New Roman"
-            })
-        ]
+        children: parts.flatMap<ParagraphChild>((part): ParagraphChild[] => part.href
+            ? [new ExternalHyperlink({
+                link: part.href,
+                children: [new TextRun({ text: part.text, size: 22, font: "Times New Roman", color: "0563C1", underline: {} })],
+            })]
+            : [new TextRun({ text: part.text, size: 22, font: "Times New Roman" })]),
     });
 }
 
@@ -80,25 +96,30 @@ export async function createDocxFromText(
     userId: string,
     includeHeader: boolean = true
 ): Promise<Buffer> {
-    const { tailoredTitle, bodyText } = extractTailoredTitle(text);
+    const { tailoredTitle, bodyText: sourceBodyText } = extractTailoredTitle(text);
+    const profile = await prisma.profile.findFirst({
+        where: { user: { clerkId: userId } },
+        include: { projects: true },
+    });
+    const bodyText = includeHeader
+        ? appendProfileProjectUrls(sourceBodyText, profile?.projects ?? [])
+        : appendProfileLinksToCoverLetter(sourceBodyText, [profile?.website, profile?.github, profile?.linkedin]);
 
     let headerParagraphs: Paragraph[] = [];
-    if (includeHeader) {
-        const profile = await prisma.profile.findFirst({ where: { user: { clerkId: userId } } });
-        if (profile) {
-            const contactLines = [
-                profile.fullName ?? "",
-                profile.title ?? "",
-                profile.location ?? "",
-                profile.email ?? "",
-                profile.phone ?? "",
-                profile.github ?? "",
-                profile.linkedin ?? "",
-            ];
-            const nameLine = contactLines[0];
-            const detailLines = contactLines.slice(1).filter(Boolean);
-            headerParagraphs = buildHeaderParagraphs(nameLine, detailLines, tailoredTitle, profile.title);
-        }
+    if (includeHeader && profile) {
+        const contactLines = [
+            profile.fullName ?? "",
+            profile.title ?? "",
+            profile.location ?? "",
+            profile.email ?? "",
+            profile.phone ?? "",
+            profile.website ?? "",
+            profile.github ?? "",
+            profile.linkedin ?? "",
+        ];
+        const nameLine = contactLines[0];
+        const detailLines = contactLines.slice(1).filter(Boolean);
+        headerParagraphs = buildHeaderParagraphs(nameLine, detailLines, tailoredTitle, profile.title);
     }
 
     const bodyParagraphs = bodyText.split(/\r?\n/).map((line) => {

@@ -122,6 +122,11 @@ select {
   position: relative;
 }
 
+.action-loading-shell {
+  position: relative;
+}
+
+.action-loading-cover,
 .daily-hunt-loading-cover {
   position: absolute;
   inset: 0;
@@ -136,6 +141,16 @@ select {
   padding: 1.5rem;
   text-align: center;
   backdrop-filter: blur(3px);
+}
+
+.action-loading-shell.is-loading .action-loading-content {
+  filter: blur(3px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.action-loading-cover {
+  display: flex;
 }
 
 .daily-hunt-batch:has(button[data-batch-search="true"][aria-busy="true"])

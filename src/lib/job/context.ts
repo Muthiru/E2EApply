@@ -53,12 +53,14 @@ async function fetchGithubReposText(profileGithub: string | null, githubToken: s
       .slice(0, 12)
       .map((r: {
         name: string;
+        html_url?: string;
         language?: string;
         description?: string;
         topics?: string[];
         stargazers_count?: number;
       }) => {
         const parts = [r.name];
+        parts.push(`URL: ${r.html_url ?? `https://github.com/${githubUsername}/${r.name}`}`);
         if (r.language) parts.push(`Language: ${r.language}`);
         if (r.topics && r.topics.length > 0) parts.push(`Topics: ${r.topics.join(", ")}`);
         if (r.stargazers_count && r.stargazers_count > 0) parts.push(`${r.stargazers_count} stars`);
@@ -109,6 +111,9 @@ function buildProfileText(
     let base = p.name;
     if (p.technologies.length) {
       base += " (" + p.technologies.join(", ") + ")";
+    }
+    if (p.url?.trim()) {
+      base += " | URL: " + p.url.trim();
     }
     if (p.description) {
       base += " — " + p.description;

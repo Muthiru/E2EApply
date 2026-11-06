@@ -10,6 +10,7 @@ import {
 } from "@/lib/job/templates";
 
 import { createDocxFromText } from "./docx";
+import { appendProfileLinksToCoverLetter, appendProfileProjectUrls } from "./documents";
 
 export function applicationPdfRouteHandler(type: "CV" | "COVER_LETTER") {
   return async function handler(
@@ -84,7 +85,7 @@ export async function renderApplicationPdf(
     where: { id: applicationId, user: { clerkId: userId } },
     include: {
       job: true,
-      user: { include: { profile: true } },
+      user: { include: { profile: { include: { projects: true } } } },
       masterCv: true,
       documents: {
         where: { type },
@@ -98,12 +99,16 @@ export async function renderApplicationPdf(
   const content = document?.content ?? (type === "CV" ? application?.masterCv?.textContent : null);
 
   if (!application || !content) return null;
+  const profile = application.user.profile;
+  const renderedContent = type === "CV"
+    ? appendProfileProjectUrls(content, profile?.projects ?? [])
+    : appendProfileLinksToCoverLetter(content, [profile?.website, profile?.github, profile?.linkedin]);
 
   const buffer =
     type === "CV"
       ? await renderToBuffer(
         CvDocument({
-          text: content,
+          text: renderedContent,
           template: isCvTemplateId(application.cvTemplate)
             ? application.cvTemplate
             : DEFAULT_CV_TEMPLATE,
@@ -113,6 +118,7 @@ export async function renderApplicationPdf(
             location: application.user.profile?.location ?? null,
             email: application.user.profile?.email ?? null,
             phone: application.user.profile?.phone ?? null,
+            website: application.user.profile?.website ?? null,
             github: application.user.profile?.github ?? null,
             linkedin: application.user.profile?.linkedin ?? null,
           },
@@ -121,7 +127,7 @@ export async function renderApplicationPdf(
       )
       : await renderToBuffer(
         CoverLetterDocument({
-          text: content,
+          text: renderedContent,
           template: isClTemplateId(application.clTemplate)
             ? application.clTemplate
             : DEFAULT_CL_TEMPLATE,

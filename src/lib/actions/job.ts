@@ -25,6 +25,8 @@ import {
   COVER_LETTER_SCHEMA_DESCRIPTION,
   CV_RULES,
   CV_SCHEMA_DESCRIPTION,
+  appendProfileLinksToCoverLetter,
+  appendProfileProjectUrls,
   sanitizeCoverLetterFromAi,
   sanitizeCvFromAi,
 } from "@/lib/job/documents";
@@ -105,7 +107,7 @@ export async function generateApplicationDocuments(
     return { ok: false, error: "A saved profile is required to generate documents." };
   }
 
-  const { profileText, jobText } = context;
+  const { profileText, jobText, profile } = context;
   const ai = getAiProvider();
   const common = {
     jsonMode: true,
@@ -149,8 +151,18 @@ export async function generateApplicationDocuments(
       })),
   ]);
 
-  const cvText = sanitizeCvFromAi(cvRaw);
-  const clText = sanitizeCoverLetterFromAi(clRaw);
+  const sanitizedCvText = sanitizeCvFromAi(cvRaw);
+  const sanitizedCoverLetter = sanitizeCoverLetterFromAi(clRaw);
+  const cvText = sanitizedCvText
+    ? appendProfileProjectUrls(sanitizedCvText, profile.projects)
+    : null;
+  const clText = sanitizedCoverLetter
+    ? appendProfileLinksToCoverLetter(sanitizedCoverLetter, [
+      profile.website,
+      profile.github,
+      profile.linkedin,
+    ])
+    : null;
 
   if (!cvText || !clText) {
     const missing = [

@@ -1,6 +1,6 @@
 import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
-import { cvBulletContent, isCvBulletLine, linkHref } from "@/lib/job/documents";
+import { cvBulletContent, isCvBulletLine, linkHref, splitLinkedText } from "@/lib/job/documents";
 import type { ClTemplateId, CvTemplateId } from "@/lib/job/templates";
 
 const classicStyles = StyleSheet.create({
@@ -218,6 +218,7 @@ type CvHeader = {
   location: string | null;
   email: string | null;
   phone: string | null;
+  website: string | null;
   github: string | null;
   linkedin: string | null;
 };
@@ -245,6 +246,17 @@ function BodyContent({
         }
         const bulletContent = cvBulletContent(trimmed);
         const textNode = bulletContent ?? trimmed;
+        const linkedParts = splitLinkedText(textNode);
+        if (linkedParts.some((part) => part.href)) {
+          return (
+            <Text key={lineKey} style={isCvBulletLine(trimmed) ? [styles.paragraph, styles.bullet] : styles.paragraph}>
+              {isCvBulletLine(trimmed) ? "\u2022 " : ""}
+              {linkedParts.map((part, partIndex) => part.href ? (
+                <Link key={`${lineKey}-link-${partIndex}`} src={part.href} style={styles.bodyLink}>{part.text}</Link>
+              ) : <Text key={`${lineKey}-text-${partIndex}`}>{part.text}</Text>)}
+            </Text>
+          );
+        }
         const href = linkHref(textNode);
         if (href) {
           return (
@@ -295,6 +307,7 @@ export function CvDocument({
       header.location ?? "",
       header.email ?? "",
       header.phone ?? "",
+      header.website ?? "",
       header.github ?? "",
       header.linkedin ?? "",
     ];
@@ -465,7 +478,9 @@ export function CoverLetterDocument({
       const pKey = `para-${idx}`;
       return (
         <Text key={pKey} style={styles.paragraph}>
-          {paragraph}
+          {splitLinkedText(paragraph).map((part, partIndex) => part.href ? (
+            <Link key={`${pKey}-link-${partIndex}`} src={part.href} style={styles.bodyLink}>{part.text}</Link>
+          ) : <Text key={`${pKey}-text-${partIndex}`}>{part.text}</Text>)}
         </Text>
       );
     });

@@ -15,12 +15,16 @@ import { matchBadgeClass } from "@/lib/status";
 import {
   cvBulletContent,
   extractMasterCvContactBlock,
+  appendProfileLinksToCoverLetter,
+  appendProfileProjectUrls,
   isCvBulletLine,
   linkHref,
+  splitLinkedText,
   stripMasterCvContactBlock,
 } from "@/lib/job/documents";
 import { useToast } from "@/components/ui/toast";
 import { isClTemplateId, isCvTemplateId } from "@/lib/job/templates";
+import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 
 type DocState = {
   text: string;
@@ -35,6 +39,7 @@ export type CvHeader = {
   location: string | null;
   email: string | null;
   phone: string | null;
+  website: string | null;
   github: string | null;
   linkedin: string | null;
 };
@@ -52,6 +57,7 @@ function resolveContactLines(
     header.location ?? "",
     header.email ?? "",
     header.phone ?? "",
+    header.website ?? "",
     header.github ?? "",
     header.linkedin ?? "",
   ];
@@ -148,6 +154,19 @@ function CvPreview({
         }
         const bulletContent = cvBulletContent(trimmed);
         const content = bulletContent ?? trimmed;
+        const linkedParts = splitLinkedText(content);
+        if (linkedParts.some((part) => part.href)) {
+          return (
+            <p key={lineKey} className={isCvBulletLine(trimmed) ? `flex gap-2 ${bodyClass}` : bodyClass}>
+              {isCvBulletLine(trimmed) && <span aria-hidden="true" className="mt-[0.15rem] text-blue-700">•</span>}
+              <span>
+                {linkedParts.map((part, partIndex) => part.href ? (
+                  <a key={`${lineKey}-link-${partIndex}`} href={part.href} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline underline-offset-2 hover:text-foreground">{part.text}</a>
+                ) : <span key={`${lineKey}-text-${partIndex}`}>{part.text}</span>)}
+              </span>
+            </p>
+          );
+        }
         const href = linkHref(content);
         if (href) {
           return (
@@ -247,7 +266,9 @@ function LetterPreview({
       const pKey = `lp-${idx}`;
       return (
         <p key={pKey} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
-          {paragraph}
+            {splitLinkedText(paragraph).map((part, partIndex) => part.href ? (
+              <a key={`${pKey}-link-${partIndex}`} href={part.href} className="text-blue-700 underline underline-offset-2">{part.text}</a>
+            ) : <span key={`${pKey}-text-${partIndex}`}>{part.text}</span>)}
         </p>
       );
     });
@@ -423,6 +444,7 @@ type DocumentPanelProps = {
   cvTemplate: string;
   clTemplate: string;
   masterCvText: string | null;
+  projects: { name: string; url: string | null }[];
 };
 
 function AlignmentBlock({ alignment }: Readonly<{ alignment: CvAlignmentCheck | null }>) {
@@ -492,10 +514,12 @@ function DocumentPanelInner({
   cvTemplate,
   clTemplate,
   masterCvText,
+  projects,
 }: Readonly<DocumentPanelProps>) {
   const router = useRouter();
   const { toast } = useToast();
   const [generating, startGenerating] = useTransition();
+  const [regenerating, setRegenerating] = useState(false);
   const [saving, startSaving] = useTransition();
   const [checking, startChecking] = useTransition();
   const [editing, setEditing] = useState<"CV" | "COVER_LETTER" | null>(null);
@@ -507,24 +531,37 @@ function DocumentPanelInner({
   const hasCvPreview = cvPreviewText.trim().length > 0;
   const [cvText, setCvText] = useState(cvPreviewText);
   const [clText, setClText] = useState(coverLetter?.text ?? "");
+  const renderedCvText = appendProfileProjectUrls(cvText, projects);
+  const renderedClText = appendProfileLinksToCoverLetter(clText, [
+    header.website,
+    header.github,
+    header.linkedin,
+  ]);
   const [alignment, setAlignment] = useState<CvAlignmentCheck | null>(
     cv?.alignment ?? null,
   );
 
   const handleGenerate = () => {
+    setRegenerating(true);
     startGenerating(async () => {
-      const result = await generateApplicationDocuments(applicationId);
-      if (result.ok) {
-        toast(cv ? "Documents regenerated." : "CV and cover letter generated.");
-        router.refresh();
-      } else {
-        toast(result.error, "error");
+      try {
+        const result = await generateApplicationDocuments(applicationId);
+        if (result.ok) {
+          toast(cv ? "Documents regenerated." : "CV and cover letter generated.");
+          router.refresh();
+        } else {
+          toast(result.error, "error");
+        }
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Document generation failed.", "error");
+      } finally {
+        setRegenerating(false);
       }
     });
   };
 
   const handleSaveFinal = (type: "CV" | "COVER_LETTER") => {
-    const content = type === "CV" ? cvText : clText;
+    const content = type === "CV" ? renderedCvText : renderedClText;
     startSaving(async () => {
       const result = await saveFinalDocument(applicationId, type, content);
       if (result.ok) {
@@ -629,6 +666,13 @@ function DocumentPanelInner({
     checkCoverageBtnText = "Re-check coverage";
   }
 
+  let loadingMessage = "Saving your document changes…";
+  if (generating || regenerating) {
+    loadingMessage = "Generating your tailored CV and cover letter…";
+  } else if (checking) {
+    loadingMessage = "Checking CV keyword coverage…";
+  }
+
   let cvStatusBlock = <span className="text-status-rejected">missing</span>;
   if (cv) {
     cvStatusBlock = (
@@ -645,6 +689,7 @@ function DocumentPanelInner({
   }
 
   return (
+    <ActionLoadingOverlay active={generating || regenerating || saving || checking} message={loadingMessage}>
     <section className="panel p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between max-w-full">
         <div className="min-w-0 flex-1">
@@ -657,7 +702,7 @@ function DocumentPanelInner({
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={generating}
+          disabled={generating || regenerating}
           className="btn btn-primary w-full sm:w-auto min-w-0"
         >
           {generateText}
@@ -689,7 +734,7 @@ function DocumentPanelInner({
                 onChange={handleTemplateChange}
                 disabled={saving}
                 kind="cv"
-                text={cvText}
+                text={renderedCvText}
                 header={header}
                 contactBlockText={null}
               />
@@ -710,7 +755,7 @@ function DocumentPanelInner({
                   <p>Your name, email, phone, and links are automatically placed at the top of the document. You only need to edit the CV body below.</p>
                 </div>
                 <textarea
-                  value={cvText}
+                  value={renderedCvText}
                   onChange={(e) => setCvText(e.target.value)}
                   rows={18}
                   className="field-control font-mono text-xs leading-relaxed"
@@ -721,7 +766,7 @@ function DocumentPanelInner({
             {hasCvPreview && editing !== "CV" && (
               <div className="mt-2 overflow-x-auto pb-2">
                 <CvPreview
-                  text={cvText}
+                  text={renderedCvText}
                   header={header}
                   template={isCvTemplateId(cvTemplate) ? cvTemplate : "classic"}
                   contactBlockText={null}
@@ -767,7 +812,7 @@ function DocumentPanelInner({
                   onChange={handleClTemplateChange}
                   disabled={saving}
                   kind="letter"
-                  text={clText}
+                  text={renderedClText}
                   header={header}
                   contactBlockText={null}
                 />
@@ -782,7 +827,7 @@ function DocumentPanelInner({
               ) : (
                 <div className="mt-2 overflow-x-auto pb-2">
                   <LetterPreview
-                    text={clText}
+                    text={renderedClText}
                     template={isClTemplateId(clTemplate) ? clTemplate : "classic"}
                   />
                 </div>
@@ -792,5 +837,6 @@ function DocumentPanelInner({
         </div>
       )}
     </section>
+    </ActionLoadingOverlay>
   );
 }
