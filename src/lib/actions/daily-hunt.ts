@@ -460,10 +460,9 @@ export async function buildDailyHuntBatch(
       return { candidate, screening, hasCvScore: Boolean(score) };
     });
 
-  const sourceWarnings = searches.flatMap((search) =>
-    search.channels.filter((channel) => !channel.ok).map((channel) => `${channel.channel} search was unavailable`),
+  const hasSearchFailures = searches.some((search) =>
+    search.channels.some((channel) => !channel.ok),
   );
-  const hasSearchFailures = sourceWarnings.length > 0;
 
   const writes = await Promise.allSettled(
     results.map(({ candidate, screening, hasCvScore }) => {
@@ -501,23 +500,23 @@ export async function buildDailyHuntBatch(
   });
 
   const saveWarnings = hasSaveFailures
-    ? ["Some results could not be saved. Run the search again to retry." ]
+    ? ["Some jobs could not be saved. Run the search again to retry."]
     : [];
-  const warnings = [...new Set([...sourceWarnings, ...saveWarnings])];
+  const warnings = [...saveWarnings];
   if (hasSearchFailures) {
-    warnings.push("Search was incomplete; only postings refreshed during this search are shown.");
+    warnings.push("Some job-search sources were unavailable. This list may be incomplete; only jobs found in this search are shown.");
   }
   if (closedPostingCount > 0) {
-    warnings.push(`${closedPostingCount} posting${closedPostingCount === 1 ? " was" : "s were"} removed because applications appeared to be closed.`);
+    warnings.push(`${closedPostingCount} posting${closedPostingCount === 1 ? " appears" : "s appear"} to be closed and ${closedPostingCount === 1 ? "was" : "were"} removed.`);
   }
   if (candidatePool.length < searchLimit) {
-    warnings.push("Only postings dated within the last 10 days were included; postings without a reliable recent date were left out.");
+    warnings.push("Only jobs posted within the last 10 days are included. Listings without a reliable date are skipped.");
   }
   if (masterCv && assessments.some(({ score }) => !score)) {
-    warnings.push("Some job postings could not be read or CV-scored; those results are marked for manual review.");
+    warnings.push("Some jobs couldn’t be checked against your Master CV. They’re marked Review.");
   }
   if (masterCv && !cvQualifications) {
-    warnings.push("CV qualifications could not be extracted for search terms. Search used your Profile skills, but readable postings were still scored against the selected CV.");
+    warnings.push("We couldn’t extract search terms from your Master CV, so we used your Profile skills. Readable postings were still scored against the CV.");
   }
   const querySummary = [...new Set(queryList)].join(" · ");
 
