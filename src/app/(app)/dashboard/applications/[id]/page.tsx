@@ -6,6 +6,7 @@ import { matchBadgeClass, statusLabel } from "@/lib/status";
 import type { JobMatchDetails } from "@/lib/job/score";
 import type { CvAlignmentCheck } from "@/lib/job/cvAlignment";
 import { ScoreButton } from "@/components/applications/score-button";
+import { ScoreLoadingBoundary } from "@/components/applications/ScoreLoadingBoundary";
 import { DocumentPanel } from "@/components/applications/document-panel";
 import { StatusControl } from "@/components/applications/status-control";
 
@@ -24,7 +25,7 @@ export default async function ApplicationDetailPage({
       statusEvents: { orderBy: { createdAt: "desc" } },
       documents: { orderBy: { version: "desc" } },
       masterCv: true,
-      user: { include: { profile: { include: { masterCvs: true } } } },
+      user: { include: { profile: { include: { masterCvs: true, projects: true } } } },
     },
   });
 
@@ -69,6 +70,7 @@ export default async function ApplicationDetailPage({
         </Link>
       </div>
 
+      <ScoreLoadingBoundary>
       <section className="panel p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-full">
           <div className="min-w-0 flex-1">
@@ -150,6 +152,7 @@ export default async function ApplicationDetailPage({
           </div>
         )}
       </section>
+      </ScoreLoadingBoundary>
 
       <DocumentPanel
         applicationId={application.id}
@@ -178,12 +181,14 @@ export default async function ApplicationDetailPage({
           location: application.user.profile?.location ?? null,
           email: application.user.profile?.email ?? null,
           phone: application.user.profile?.phone ?? null,
+          website: application.user.profile?.website ?? null,
           github: application.user.profile?.github ?? null,
           linkedin: application.user.profile?.linkedin ?? null,
         }}
         cvTemplate={application.cvTemplate ?? "classic"}
         clTemplate={application.clTemplate ?? "classic"}
         masterCvText={application.masterCv?.textContent ?? null}
+        projects={application.user.profile?.projects.map((project) => ({ name: project.name, url: project.url })) ?? []}
       />
 
       <section className="panel p-5 sm:p-6">

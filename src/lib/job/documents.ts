@@ -5,14 +5,14 @@ Plain paragraphs under Summary and Education. No other markdown, no headings dee
 
 export const CV_RULES = `Rules:
 - This CV is an EDITED VERSION of the candidate's MASTER CV — same document, tailored to the posting. Do not design a new CV.
-- The MASTER CV block in the prompt is the source of truth. Every company, job title, date, degree, institution, skill, project name, and result MUST come from it verbatim — never alter facts, never add facts that are not in it (except for GitHub Repository Injection below).
-- PRESERVE the original CV's structure: keep the exact section headings and their order (given in the prompt as "CV section order"). Do not add or remove sections. Within each section, keep existing content but tailor the wording. The ONE EXCEPTION is the Projects section — see "GitHub Repository Injection" below.
+- The MASTER CV and structured candidate profile are the sources of truth. Every company, job title, date, degree, institution, skill, project name, and result MUST come from those sources — never invent facts.
+- PRESERVE the original CV's structure: keep the exact section headings and their order (given in the prompt as "CV section order"). Do not add or remove sections. Within each section, tailor only the wording while keeping all claims factual.
 - Do NOT write the candidate's name, contact details, location, email, phone, LinkedIn, GitHub, website, or other identity/social-profile lines in the generated CV body. Those are immutable and are rendered verbatim from the MASTER CV contact block by the app.
 - **Tailored Title**: The VERY FIRST line of your output MUST be a professional title (e.g. "Senior Frontend Engineer" or "Business Analyst") optimally tailored to match the role being applied for. Importantly, you MUST append 3 to 4 of the most highly relevant core tech stack/skill ATS keywords from the job description separated by pipelines (e.g. "Senior Frontend Engineer | React | TypeScript | Next.js"). Output this title string exactly on its own line, WITHOUT any encompassing quotation marks, hash symbols, or markdown formatting.
 - After the tailored title, leave a blank line, then start the first CV section heading, e.g. "## Summary".
 - Tailoring means: rephrase the master CV's own words to match the posting's language where the facts genuinely support it (ATS keyword alignment), reorder skills by relevance to the posting, and surface the posting's most important keywords in the Summary's first line if the master CV supports them.
-- **Handling Missing Requirements**: Review the "Missing requirements shown to the user" in the prompt. To maximize the candidate's ATS keyword score, you MUST creatively integrate every single missing requirement keyword into the CV. Weave them naturally into the Skills list, Summary paragraph, or by expanding existing Experience bullets to implicitly cover those competencies (e.g. framing a past project to involve "stakeholder management" or general tools). Do NOT skip any missing keywords.
-- **GitHub Repository Injection (MANDATORY)**: Check the "GitHub Repositories (Public, dynamically fetched)" list provided in the context. If ANY repository matches a technology, language, or skill from the job description — especially one the master CV's Projects section does not already cover — you MUST add it as a NEW project bullet under the "## Projects" section. Create one bullet per relevant repo: use the repository name, its primary language, and its description, framed as a real project the candidate built. This is the one section where you are REQUIRED to add content beyond what the master CV contains. Do NOT skip relevant repos just because the master CV already has some projects listed — ADD the new ones alongside the existing ones.
+- **Handling Missing Requirements**: Include a missing requirement only when the candidate profile or Master CV contains direct evidence for it. Rephrase that evidence accurately; never imply an unsupported skill or experience. Leave unsupported requirements out of the CV.
+- Include a project URL only when one is explicitly present in the candidate profile or the provided repository data. Never invent a URL or add a "GitHub repository" label without an actual link. Keep project links next to the matching project name.
 - Rewrite experience/project bullets from the master CV to start with strong action verbs, 2-4 bullets per role, each factual and specific to what the master CV states.
 - If the MASTER CV was not uploaded, use ONLY the structured profile fields — never invent anything to fill space.
 - Keep it to one page. Plain text only — no placeholders, no bracketed text.`;
@@ -220,4 +220,69 @@ export function linkHref(line: string): string | null {
     return `https://${trimmed}`;
   }
   return null;
+}
+
+export type LinkedTextPart = { text: string; href?: string };
+
+export function splitLinkedText(text: string): LinkedTextPart[] {
+  const parts: LinkedTextPart[] = [];
+  const urlPattern = /https?:\/\/[^\s<>]+/gi;
+  let cursor = 0;
+
+  for (const match of text.matchAll(urlPattern)) {
+    const index = match.index ?? 0;
+    const rawUrl = match[0];
+    const url = rawUrl.replace(/[.,;:!?]+$/, "");
+    const trailing = rawUrl.slice(url.length);
+    if (index > cursor) parts.push({ text: text.slice(cursor, index) });
+    if (url) parts.push({ text: url, href: url });
+    if (trailing) parts.push({ text: trailing });
+    cursor = index + rawUrl.length;
+  }
+
+  if (cursor < text.length) parts.push({ text: text.slice(cursor) });
+  return parts.length ? parts : [{ text }];
+}
+
+export function appendProfileProjectUrls(
+  text: string,
+  projects: { name: string; url: string | null }[],
+): string {
+  const lines = text.split(/\r?\n/);
+  let inProjects = false;
+
+  return lines.map((line) => {
+    const heading = /^##\s+(.*)/.exec(line.trim());
+    if (heading) {
+      inProjects = /^projects?\b/i.test(heading[1]);
+      return line;
+    }
+    if (!inProjects) return line;
+
+    const matchingProject = projects.find((project) => {
+      const url = project.url?.trim();
+      return Boolean(url && project.name.trim() && line.toLowerCase().includes(project.name.trim().toLowerCase()));
+    });
+    if (!matchingProject?.url) {
+      return line.replace(/\s*(?:[|–—-]\s*)?GitHub repository\b/gi, "");
+    }
+    if (line.toLowerCase().includes(matchingProject.url.trim().toLowerCase())) return line;
+    return `${line.trimEnd()} — ${matchingProject.url.trim()}`;
+  }).join("\n");
+}
+
+export function appendProfileLinksToCoverLetter(
+  text: string,
+  links: (string | null | undefined)[],
+): string {
+  const separator = text.search(/\n\s*\n/);
+  if (separator < 0) return text;
+  const contactBlock = text.slice(0, separator);
+  const availableLinks = links
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value && linkHref(value)))
+    .filter((value) => !contactBlock.toLowerCase().includes(value.toLowerCase()));
+  if (!availableLinks.length) return text;
+
+  return `${contactBlock}\n${availableLinks.join(" | ")}${text.slice(separator)}`;
 }

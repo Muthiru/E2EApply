@@ -1,8 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { scoreApplication, setApplicationMasterCv } from "@/lib/actions/job";
+import { useScoreLoading } from "@/components/applications/ScoreLoadingBoundary";
 import { useToast } from "@/components/ui/toast";
 
 export function ScoreButton(props: Readonly<{
@@ -15,28 +16,43 @@ export function ScoreButton(props: Readonly<{
   const router = useRouter();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const setBoundaryLoading = useScoreLoading();
+
+  useEffect(() => {
+    if (!isPending) setBoundaryLoading?.(false, "");
+  }, [isPending, setBoundaryLoading]);
 
   const handleScore = () => {
+    setBoundaryLoading?.(true, "Scoring this job against your selected Master CV…");
     startTransition(async () => {
-      const result = await scoreApplication(applicationId);
-      if (result.ok) {
-        toast("Match score ready.");
-        router.refresh();
-      } else {
-        toast(result.error, "error");
+      try {
+        const result = await scoreApplication(applicationId);
+        if (result.ok) {
+          toast("Match score ready.");
+          router.refresh();
+        } else {
+          toast(result.error, "error");
+        }
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Could not score this job.", "error");
       }
     });
   };
 
   const handleSelectCv = (cvId: string) => {
     const nextId = cvId === "none" ? null : cvId;
+    setBoundaryLoading?.(true, "Updating the selected Master CV…");
     startTransition(async () => {
-      const result = await setApplicationMasterCv(applicationId, nextId);
-      if (result.ok) {
-        toast("Master CV selected. Click Rescore to update.");
-        router.refresh();
-      } else {
-        toast(result.error, "error");
+      try {
+        const result = await setApplicationMasterCv(applicationId, nextId);
+        if (result.ok) {
+          toast("Master CV selected. Click Rescore to update.");
+          router.refresh();
+        } else {
+          toast(result.error, "error");
+        }
+      } catch (error) {
+        toast(error instanceof Error ? error.message : "Could not update the selected CV.", "error");
       }
     });
   };
