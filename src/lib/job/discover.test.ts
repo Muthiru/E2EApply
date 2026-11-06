@@ -442,11 +442,11 @@ describe("rankCandidatesByQuery", () => {
     expect(isLikelyOldCandidate(candidates[2])).toBe(false);
   });
 
-  it("excludes candidates published more than seven days ago", () => {
+  it("excludes candidates published more than ten days ago", () => {
     const candidates = [
       baseCandidate({
         title: "Senior Engineer",
-        publishedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+        publishedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
       }),
       baseCandidate({
         title: "Senior Engineer",

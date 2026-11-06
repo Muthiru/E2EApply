@@ -7,6 +7,7 @@ export type DiscoverCandidate = {
   source: "exa" | "jina" | "rss" | "board";
   estimatedMatch: number | null;
   matchedSkills: string[];
+  location?: string | null;
 };
 
 export type ChannelReport = {
@@ -18,7 +19,7 @@ export type ChannelReport = {
 
 const SEARCH_LIMIT = 10;
 const TIMEOUT_MS = 20_000;
-const FRESHNESS_DAYS = 7;
+const FRESHNESS_DAYS = 10;
 
 function firstString(...values: unknown[]): string | undefined {
   const value = values.find((entry) => typeof entry === "string");
@@ -413,7 +414,7 @@ async function searchExa(
       type: "auto",
       category: "job listing",
       ...(includeDomains?.length ? { includeDomains } : {}),
-      contents: { text: { maxCharacters: 500 } },
+      contents: { text: { maxCharacters: 3000 } },
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
@@ -610,7 +611,7 @@ export function filterRssItems(
       title: scored.item.title,
       company: extractCompanyFromRss(scored.item.title, scored.item.description),
       url: scored.item.link,
-      snippet: stripHtml(scored.item.description.slice(0, 500)) || null,
+      snippet: stripHtml(scored.item.description.slice(0, 3000)) || null,
       publishedAt: scored.item.pubDate ?? null,
       source: "rss" as const,
       estimatedMatch: null,
@@ -856,7 +857,7 @@ function getLocationQuery(query: string): { location: string | null; queryWithou
 }
 
 function candidateLocationText(candidate: DiscoverCandidate): string {
-  return [candidate.title, candidate.company, candidate.snippet]
+  return [candidate.title, candidate.company, candidate.location, candidate.snippet]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -927,7 +928,7 @@ export function rankCandidatesByQuery(
   );
 
   if (relaxedMatches.length === 0) {
-    return recentTitleMatches.slice(0, 5).map(({ candidate }) => candidate);
+    return location ? [] : recentTitleMatches.slice(0, 5).map(({ candidate }) => candidate);
   }
 
   return relaxedMatches.filter(
@@ -995,6 +996,7 @@ export function filterBoardCandidates(
         title: scored.job.title,
         company: scored.job.company ?? null,
         url: scored.job.url,
+        location,
         snippet:
           scored.job.snippet ??
           ([location, tags.slice(0, 4).join(", ")]

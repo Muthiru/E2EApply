@@ -647,7 +647,7 @@ export function ProfileForm(props: Readonly<{
               placeholder="Senior Engineer, Tech Lead, etc."
             />
           </Field>
-          <Field label="Locations (comma-separated)">
+          <Field label="Locations (first is primary)">
             <Input
               value={form.preferences.locations.join(", ")}
               onChange={(v) =>
@@ -656,7 +656,7 @@ export function ProfileForm(props: Readonly<{
                   locations: splitList(v),
                 })
               }
-              placeholder="San Francisco, London, Remote"
+              placeholder="London, Berlin, Remote"
             />
           </Field>
           <Field label="Salary floor ($/yr)">
