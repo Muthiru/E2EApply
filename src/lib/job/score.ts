@@ -1,4 +1,6 @@
-import { isRecord, str, strArray } from "@/lib/ai/parse";
+import { aiErrorText, isRecord, str, strArray } from "@/lib/ai/parse";
+import { getAiProvider } from "@/lib/ai";
+import { extractJson } from "@/lib/cv/sanitize";
 
 export type MatchRecommendation = "apply" | "consider" | "skip";
 
@@ -57,4 +59,40 @@ export function sanitizeScoreFromAi(input: unknown): JobMatchScore | null {
     reasoning,
     recommendation,
   };
+}
+
+export type ProfileJobScoreResult =
+  | { ok: true; score: JobMatchScore }
+  | { ok: false; error: string };
+
+/** Shared score call used by the existing application flow and Daily Hunt. */
+export async function scoreProfileAgainstJob(
+  profileText: string,
+  jobText: string,
+): Promise<ProfileJobScoreResult> {
+  const ai = getAiProvider();
+  let raw: string;
+  try {
+    raw = await ai.complete(
+      [
+        {
+          role: "system",
+          content: `${SCORE_SCHEMA_DESCRIPTION}\n\n${SCORE_RULES}`,
+        },
+        {
+          role: "user",
+          content: `CANDIDATE PROFILE:\n${profileText}\n\nJOB POSTING:\n${jobText}`,
+        },
+      ],
+      { jsonMode: true, temperature: 0.1 },
+    );
+  } catch (error) {
+    return { ok: false, error: aiErrorText(error, "Scoring failed — retry.") };
+  }
+
+  const parsed = extractJson(raw);
+  const score = parsed === null ? null : sanitizeScoreFromAi(parsed);
+  if (!score) return { ok: false, error: "Scoring failed — please retry." };
+
+  return { ok: true, score };
 }

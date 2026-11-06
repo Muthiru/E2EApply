@@ -34,15 +34,82 @@ enum DocumentType {
   COVER_LETTER
 }
 
+enum DailyHuntBatchStatus {
+  DRAFT
+  REVIEWING
+  COMPLETE
+}
+
+enum DailyHuntScreeningStatus {
+  MATCHED
+  REVIEW
+  EXCLUDED
+}
+
 model User {
-  id           String        @id @default(cuid())
-  clerkId      String        @unique
-  email        String?
-  name         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  profile      Profile?
-  applications Application[]
+  id                   String                @id @default(cuid())
+  clerkId              String                @unique
+  email                String?
+  name                 String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  profile              Profile?
+  applications         Application[]
+  dailyHuntBatches     DailyHuntBatch[]
+  dailyHuntPreferences DailyHuntPreferences?
+}
+
+model DailyHuntPreferences {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mustHaveTerms    String[] @default([])
+  dealBreakerTerms String[] @default([])
+  dailyTargetCount Int      @default(10)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model DailyHuntBatch {
+  id             String               @id @default(cuid())
+  userId         String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  masterCvId     String?
+  masterCv       MasterCv?            @relation(fields: [masterCvId], references: [id], onDelete: SetNull)
+  status         DailyHuntBatchStatus @default(DRAFT)
+  targetCount    Int                  @default(10)
+  searchQuery    String?
+  searchedAt     DateTime?
+  searchWarnings String[]             @default([])
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  items          DailyHuntBatchItem[]
+
+  @@index([userId, createdAt])
+  @@index([masterCvId])
+}
+
+model DailyHuntBatchItem {
+  id               String                   @id @default(cuid())
+  batchId          String
+  batch            DailyHuntBatch           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  applicationId    String?
+  application      Application?             @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  url              String
+  title            String
+  company          String?
+  snippet          String?
+  publishedAt      String?
+  source           String
+  estimatedMatch   Int?
+  matchedSkills    String[]                 @default([])
+  screeningStatus  DailyHuntScreeningStatus @default(REVIEW)
+  screeningReasons String[]                 @default([])
+  createdAt        DateTime                 @default(now())
+
+  @@unique([batchId, url])
+  @@index([batchId, screeningStatus])
+  @@index([applicationId])
 }
 
 model Profile {
@@ -84,7 +151,8 @@ model MasterCv {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  applications Application[]
+  applications     Application[]
+  dailyHuntBatches DailyHuntBatch[]
 }
 
 model Skill {
@@ -202,6 +270,7 @@ model Application {
   updatedAt               DateTime          @updatedAt
   statusEvents            StatusEvent[]
   documents               Document[]
+  dailyHuntItems          DailyHuntBatchItem[]
 
   @@unique([userId, jobId])
 }

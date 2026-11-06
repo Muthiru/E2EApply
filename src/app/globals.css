@@ -118,6 +118,38 @@ select {
   gap: 1.25rem;
 }
 
+.daily-hunt-search-results {
+  position: relative;
+}
+
+.daily-hunt-loading-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 72%);
+  padding: 1.5rem;
+  text-align: center;
+  backdrop-filter: blur(3px);
+}
+
+.daily-hunt-batch:has(button[data-batch-search="true"][aria-busy="true"])
+  .daily-hunt-search-results-content {
+  filter: blur(3px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.daily-hunt-batch:has(button[data-batch-search="true"][aria-busy="true"])
+  .daily-hunt-loading-cover {
+  display: flex;
+}
+
 .page-header {
   display: flex;
   flex-direction: column;

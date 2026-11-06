@@ -356,6 +356,10 @@ Document (generated CV/cover letter files, versioned)
 - [ ] Match email to the right `Application` (company name / sender domain / thread heuristics)
 - [ ] Confidence levels: **Confirmed** vs. **Likely** vs. manual review — never silently auto-change status on low confidence
 - [ ] User corrections feed back into prompt examples over time
+- [ ] For a confidently identified interview invitation, extract the proposed date, time, time zone, meeting link, and role/company as a calendar-event suggestion; show the source email and let the user correct the details.
+- [ ] Add optional Google Calendar / Microsoft Outlook Calendar connection with a separate, explicit calendar-write authorization; keep inbox access read-only.
+- [ ] Create, update, or cancel an interview event only after the user confirms the action; detect likely duplicates and never send email or submit applications through calendar authorization.
+- [ ] Handle missing or ambiguous time zones and incomplete invitations by asking the user to review rather than creating a guessed event.
 
 ### Risk to budget time for
 False positives ("we received your application" ≠ interview invite). Build the manual-override path *before* trusting the automation.
@@ -363,6 +367,71 @@ False positives ("we received your application" ≠ interview invite). Build the
 **Checkpoint 2 → 3 (kill/pivot point):**
 - ✅ **Proceed** if classification accuracy on your own real inbox is high enough that false positives aren't eroding trust (track this — log every classification vs. what it actually was).
 - 🛑 **Pivot** if accuracy is poor and hard to improve — consider keeping this as "suggested status change, one click to confirm" permanently rather than pushing toward full auto-detection.
+
+---
+
+## Phase 2A — Daily personalized job-hunt batch (proposed)
+
+**Source idea:** Adapted from the “Grok Bot Job Hunt Template” shared on 2026-11-06. The product should bring the template's daily job discovery, fit screening, tailored application preparation, human approval, tracking, and follow-up summary into E2E Apply's existing workflow.
+
+**Goal:** Add a separate, Profile-driven batch workflow for relevant jobs and application materials. This is an additive feature: preserve the current Applications, Profile, scoring, document generation, and manual tracker flows and their behavior. Reuse their proven domain logic through backward-compatible shared functions or wrappers; do not fork a second implementation of discovery, scoring, or document generation. Partial implementation is underway for isolated batch workspaces, discovery, and CV-based screening; phase-level behavior and regression validation remain outstanding.
+
+**Scope decisions (2026-11-06):** Keep Daily Hunt focused on discovery, CV fit, review, and user-selected tracking. Do not add a separate Daily Hunt preferences panel: roles, locations, remote preference, salary floor, and minimum match come from Profile; new batches use a fixed target of 10. Must-have/deal-breaker fields are out of the current scope. Include only postings with a reliable posting date no more than 10 days old, omit known closed listings, and remove prior results that were not refreshed in the current search so old cards are not presented as active. If a search source is unavailable, show the available current results and a warning. Do not fetch pages hosted by known ATS providers (Greenhouse, Lever, Workday, Workable, Ashby, or SmartRecruiters); use search-provided excerpts and label excerpt-based scores for review.
+
+### 2A.0 Isolation and implementation order
+- [x] Add a dedicated **Daily Hunt** entry/page and feature-specific UI; do not replace or repurpose the existing Applications page or job paste/discovery flow. **Built: nav entry and `/dashboard/daily-hunt` batch workspace; existing Applications and job-entry routes remain in place.**
+- [x] Keep batch lifecycle and unselected candidates isolated from existing Application records; link or create tracker applications only after the user selects jobs for preparation, avoiding duplicate `(user, job)` applications. **Built: batch items stay separate until Track job; tracking reuses an existing application and links atomically, with per-user URL/title-company locks against duplicate clicks.**
+- [x] Add only backward-compatible schema and shared-logic changes. Preserve existing server-action inputs/outputs where possible; if shared logic must be extracted, keep compatibility wrappers and verify existing callers retain the same behavior. **Built: additive batch schema; shared job-creation and scoring helpers retain the existing `addJobFromText` and `scoreApplication` interfaces.**
+- [ ] Implement in small slices: (1) isolated page and additive batch persistence, (2) Profile-based location/freshness screening, (3) reuse discovery/scoring/document generation for selected jobs, (4) approval and tracker linkage, (5) email/calendar integrations.
+- [x] Make batch processing resilient to partial failures: retain successful current results, identify failed sources/items, remove unrefreshed old results, and allow safe retries without duplicate jobs, applications, documents, or calendar events. **Built: current-run saves are retained, failed sources are reported, unrefreshed prior cards are removed, and tracking reuses/locks existing applications.**
+- [x] At each slice, review scope and regression evidence before proceeding; do not mark existing Phase 1 work as changed or complete based only on the new feature. **Reviewed by code-review agent; existing suite passed (134 tests), with Phase 1 functionality covered by regression tests.**
+
+### 2A.1 Profile-driven search and batch creation
+- [x] Treat the first Profile location as primary: search and rank its jobs ahead of the next two fallback locations, using fallback results only to fill the requested shortlist. **Built: ordered Profile locations and CV country guide queries; primary-location results rank first.**
+- [x] When a batch Master CV is selected, extract only evidence-backed role and qualification terms from it for discovery; keep explicit target roles and location/work preferences in control of the search. Do not send the full CV to search providers. **Built: CV qualification extraction is evidence-checked and only extracted terms enter search queries.**
+- [x] Compare discovered postings against the selected Master CV with the existing match-scoring rules. Never crawl a known ATS-hosted posting page; use sufficiently detailed search excerpts only with an explicit review caveat. If a posting cannot be read or scored, label it for manual review instead of presenting a keyword estimate as a CV match. **Built: shared CV scoring; known ATS hosts are not fetched, excerpt scores are labeled Review, and unscorable cards have no CV score.**
+- [x] When no Master CV is selected, keep profile-keyword results in manual review; do not label them as CV-qualified matches. Keep only results refreshed in the current search, including when a source fails, and show a warning for incomplete source coverage. **Built: no-CV results stay Review; prior unrefreshed cards are removed and source failures are surfaced.**
+- [x] Use a fixed target of 10 jobs per batch; show fewer when discovery does not find enough eligible jobs. **Built: each new batch defaults to 10.**
+- [x] Create a dated batch from jobs with a reliable posting date no more than 10 days old, deduplicated against tracked jobs and screened against Profile constraints before presenting it. **Built: strict ten-day age filter, tracked-job dedupe, Profile-based location/remote/salary/match screening, and closed-listing filtering.**
+- [x] Show fewer than the requested count when discovery does not find enough eligible, sufficiently fresh jobs; never pad a batch with weak or stale matches. **Built: only eligible current-run results are saved; no result padding.**
+- [x] Explain why each job passed, was flagged as borderline, or was excluded, and let the user review borderline jobs without treating them as approved applications. **Built: status badges, score rationale, manual-review reasons, and excluded state.**
+
+### 2A.2 Prepare, review, and track
+- [ ] Include past batches and outcomes so users can see which jobs were approved, skipped, prepared, manually submitted, or still need attention.
+- [x] Let the user add an individual Daily Hunt result to the existing Applications tracker as **Pending**, reuse an existing matching application when present, and link the batch result back to that application. Tracking never means applied or submitted. **Built: Track job links/reuses an Application in PENDING and navigates to it; no submission is performed.**
+- [x] Use Profile as the settings surface for target roles, locations, remote preference, salary floor, and minimum match; keep connected-account controls separate from the search workflow. **Built: Daily Hunt reads these settings from Profile; the separate preferences panel was removed by product decision. Account connections remain out of this implementation slice.**
+- [ ] Generate a tailored CV and short cover-letter draft for each selected job using only evidence from the user's profile and selected Master CV.
+- [x] Let the user select a Master CV per batch; validate that it belongs to the user, and use it as qualification evidence for discovery and scoring without changing existing per-application selections. If the CV is deleted, clear the batch selection safely. **Built: ownership validation, batch-scoped selection, discovery/scoring use, and SetNull delete behavior.**
+- [ ] Use the selected Master CV as evidence for Daily Hunt document generation without changing existing per-application selections. **Pending: batch document generation is a later slice.**
+- [ ] Present the complete batch for review, with per-job details, source link, fit rationale, and editable documents; require explicit approval before any assisted-application step.
+- [ ] Add an accurate preparation state such as **Needs manual submit** for approved applications that have not been submitted; do not mark them APPLIED until the user confirms they submitted.
+- [ ] Reuse the existing application and status-event history where possible; retain batch identity and approval decisions for auditability.
+- [ ] Provide a daily summary of prepared jobs, confirmed submissions, manual follow-ups, and flagged items.
+
+### 2A.3 Dependencies and guardrails
+- [ ] Call the same validated discovery, match-scoring, and document-generation logic used by the current single-job flow, including its profile/Master CV context and facts-only content rules; add batch orchestration around those capabilities rather than changing their behavior.
+- [ ] Define batch-safe shared function boundaries and ownership checks so each item is processed for the authenticated user and a failure in one item cannot expose or corrupt another user's data.
+- [ ] Verify that generated CVs, cover letters, template selection, final-document rules, and score explanations match the existing single-job behavior for equivalent inputs.
+- [ ] Coordinate inbox monitoring with Phase 2 email intelligence so recruiter replies, status suggestions, and interview-event suggestions can be linked to the right application, with ambiguous changes requiring user confirmation.
+- [ ] Keep Google / Microsoft calendar write authorization separate from read-only email authorization; allow users to disconnect either integration and revoke stored tokens.
+- [ ] Make calendar changes traceable to the source message and user confirmation; prevent duplicate events and provide a path to correct or remove an event created by the app.
+- [ ] Keep actual ATS form filling behind the Phase 3 validation and compliance gates. A batch approval is not blanket permission for unattended submission: the user reviews each application and personally performs the final submit action.
+- [ ] Keep bot controls, CAPTCHAs, employer attestations, and terms-of-service restrictions intact; do not bypass them.
+
+**Checkpoint 2A (value and safety):**
+- ✅ **Proceed** if a user can review a useful batch, correct Profile location/work preferences, and prepare accurate applications without losing track of what was or was not submitted.
+- 🛑 **Revise or pivot** if batches are padded with weak or stale results, location/work constraints are missed, documents need substantial rewriting, or users confuse prepared applications with submitted ones.
+- ✅ **Regression gate:** Existing Applications, Profile, single-job scoring, document generation/downloads, and manual status tracking continue to behave as before; record actual verification results for both old and new workflows.
+
+### Phase 2A implementation-slice verification (2026-11-06)
+- `npm run lint`: passed (0 errors, 0 warnings).
+- `npx tsc --noEmit`: passed.
+- `npx prisma validate`: passed.
+- `npm test`: **134 tests passed across 10 files**.
+- Production compilation: `npx next build --webpack` passed. The default Turbopack build hit a worker-spawn restriction in the environment; Webpack is a documented Next build mode. The package `npm run build` was not used because it runs `prisma migrate deploy` against the configured database as a side effect.
+- `npm run qa:duplication`: **1 existing clone**, 22 duplicated lines (0.31%), below the 5% threshold. It is shared upload-validation code in the CV parsing and certificate import routes; no Daily Hunt clones were found.
+- Read-only agent review found no blocking issues after ATS-host fetch restrictions and transactional tracking locks were added.
+- Still outstanding: authenticated end-to-end verification against the configured database and completion of the remaining Phase 2A document preparation, approval, outcome history, and email/calendar slices. This verification does not mark the full Phase 2A checkpoint complete.
 
 ---
 
