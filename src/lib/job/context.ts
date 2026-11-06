@@ -2,7 +2,7 @@
 import { getOwnedApplication } from "@/lib/job/access";
 import { extractMasterCvContactBlock } from "@/lib/job/documents";
 
-const PROFILE_INCLUDE = {
+export const PROFILE_INCLUDE = {
   skills: true,
   experiences: true,
   educations: true,
@@ -149,6 +149,16 @@ function buildProfileText(
   ].join("\n");
 }
 
+export async function buildCandidateProfileText(profile: any, masterCv: any): Promise<string> {
+  const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
+  const githubReposText = await fetchGithubReposText(
+    profile.github,
+    profile.githubToken,
+    masterCv?.textContent ?? null,
+  );
+  return buildProfileText(profile, masterCv, masterCvContactBlock, githubReposText);
+}
+
 function buildJobText(job: any, matchDetails: any): string {
   const matchedRequirements = stringList(matchDetails?.matchedSkills);
   const missingRequirements = stringList(matchDetails?.missingSkills);
@@ -186,11 +196,7 @@ export async function getApplicationContext(applicationId: string) {
 
   const profile = application.user.profile;
   const masterCv = application.masterCv;
-  const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
-
-  const githubReposText = await fetchGithubReposText(profile.github, profile.githubToken, masterCv?.textContent ?? null);
-
-  const profileText = buildProfileText(profile, masterCv, masterCvContactBlock, githubReposText);
+  const profileText = await buildCandidateProfileText(profile, masterCv);
 
   const matchDetails =
     application.job.matchDetails && typeof application.job.matchDetails === "object" && !Array.isArray(application.job.matchDetails)
@@ -199,5 +205,6 @@ export async function getApplicationContext(applicationId: string) {
 
   const jobText = buildJobText(application.job, matchDetails);
 
+  const masterCvContactBlock = extractMasterCvContactBlock(masterCv?.textContent ?? "");
   return { application, job: application.job, profile, profileText, jobText, masterCvContactBlock };
 }
