@@ -132,6 +132,31 @@ export async function createDailyHuntBatch(): Promise<void> {
   revalidatePath("/dashboard/daily-hunt");
 }
 
+export type DeleteDailyHuntBatchResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function deleteDailyHuntBatch(
+  batchId: string,
+): Promise<DeleteDailyHuntBatchResult> {
+  const { userId } = await auth.protect();
+  if (typeof batchId !== "string") {
+    return { ok: false, error: "Invalid batch." };
+  }
+  const id = batchId.trim();
+  if (!id) return { ok: false, error: "Invalid batch." };
+
+  const result = await prisma.dailyHuntBatch.deleteMany({
+    where: { id, user: { clerkId: userId } },
+  });
+  if (result.count === 0) {
+    return { ok: false, error: "Batch not found." };
+  }
+
+  revalidatePath("/dashboard/daily-hunt");
+  return { ok: true };
+}
+
 export async function saveDailyHuntMasterCv(
   batchId: string,
   formData: FormData,

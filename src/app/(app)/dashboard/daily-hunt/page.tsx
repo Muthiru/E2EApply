@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { matchBadgeClass } from "@/lib/status";
 import { DailyHuntSubmitButton } from "@/components/daily-hunt/DailyHuntSubmitButton";
+import { DeleteDailyHuntBatchButton } from "@/components/daily-hunt/DeleteDailyHuntBatchButton";
+import { DailyHuntToast } from "@/components/daily-hunt/DailyHuntToast";
 import { DailyHuntFlowerLoader } from "@/components/daily-hunt/DailyHuntFlowerLoader";
 import {
   buildDailyHuntBatch,
@@ -82,22 +84,21 @@ export default async function DailyHuntPage({
           {PAGE_ERRORS[params.error]}
         </p>
       )}
-      {params.mastercv && (
-        <p role="status" className="rounded-lg border border-status-offer/30 bg-status-offer/5 px-4 py-3 text-sm text-status-offer">
-          Master CV selection saved for this batch.
-        </p>
-      )}
+      <DailyHuntToast
+        show={Boolean(params.mastercv)}
+        message="Master CV selection saved for this batch."
+        queryParam="mastercv"
+      />
+      <DailyHuntToast
+        show={Boolean(params.batch && !params.error)}
+        message="Search finished. Results are saved in the selected batch for review."
+        queryParam="batch"
+      />
       {params.tracked && (
         <p role="status" className="rounded-lg border border-status-offer/30 bg-status-offer/5 px-4 py-3 text-sm text-status-offer">
           Job added to Applications as Pending. It has not been marked as applied.
         </p>
       )}
-      {params.batch && !params.error && (
-        <p role="status" className="rounded-lg border border-status-offer/30 bg-status-offer/5 px-4 py-3 text-sm text-status-offer">
-          Search finished. Results are saved in the selected batch for review.
-        </p>
-      )}
-
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(17rem,0.75fr)]">
         <section className="panel p-5 sm:p-6" aria-labelledby="batch-list-heading">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -133,9 +134,14 @@ export default async function DailyHuntPage({
                 const matched = batch.items.filter((item) => item.screeningStatus === "MATCHED").length;
                 const review = batch.items.filter((item) => item.screeningStatus === "REVIEW").length;
                 const excluded = batch.items.filter((item) => item.screeningStatus === "EXCLUDED").length;
+                const visibleSearchWarnings = batch.items.length > 0
+                  ? batch.searchWarnings.filter((warning) =>
+                      !/search was unavailable|search was incomplete/i.test(warning),
+                    )
+                  : batch.searchWarnings;
 
                 return (
-                  <li key={batch.id} className="daily-hunt-batch rounded-xl border border-border bg-white p-4 shadow-sm sm:p-5">
+                  <li key={batch.id} className="daily-hunt-batch min-w-0 rounded-xl border border-border bg-white p-4 shadow-sm sm:p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -152,34 +158,37 @@ export default async function DailyHuntPage({
                             : `Target: ${batch.targetCount} jobs · Not searched yet`}
                         </p>
                       </div>
-                      <form action={buildDailyHuntBatch.bind(null, batch.id)}>
-                        <DailyHuntSubmitButton
-                          className="btn btn-primary min-h-9 w-full px-3 py-2 text-xs sm:w-auto"
-                          idleLabel={batch.searchedAt ? "Search again" : "Find jobs"}
-                          pendingLabel="Searching…"
-                          pendingMessage="Checking job sources, location, and CV match. This may take a little while."
-                          batchSearch
-                        />
-                      </form>
+                      <div className="flex w-full items-start justify-between gap-2 sm:w-auto sm:justify-start">
+                        <form action={buildDailyHuntBatch.bind(null, batch.id)}>
+                          <DailyHuntSubmitButton
+                            className="btn btn-primary min-h-9 w-auto px-3 py-2 text-xs"
+                            idleLabel={batch.searchedAt ? "Search again" : "Find jobs"}
+                            pendingLabel="Searching…"
+                            pendingMessage="Checking job sources, location, and CV match. This may take a little while."
+                            batchSearch
+                          />
+                        </form>
+                        <DeleteDailyHuntBatchButton batchId={batch.id} />
+                      </div>
                     </div>
 
-                    <form action={saveDailyHuntMasterCv.bind(null, batch.id)} className="mt-4 rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
+                    <form action={saveDailyHuntMasterCv.bind(null, batch.id)} className="mt-4 w-full min-w-0 max-w-full rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
                       <label htmlFor={`master-cv-${batch.id}`} className="block text-sm font-medium text-foreground">
                         Master CV for this batch
                       </label>
-                      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <div className="mt-2 grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                         <select
                           id={`master-cv-${batch.id}`}
                           name="masterCvId"
                           defaultValue={batch.masterCvId ?? ""}
-                          className="field-control min-w-0 flex-1"
+                          className="field-control block w-full min-w-0 max-w-full truncate"
                         >
                           <option value="">No Master CV selected</option>
                           {user?.profile?.masterCvs.map((masterCv) => (
                             <option key={masterCv.id} value={masterCv.id}>{masterCv.name}</option>
                           ))}
                         </select>
-                        <button className="btn btn-secondary shrink-0" type="submit">Save selection</button>
+                        <button className="btn btn-secondary w-full min-w-0 sm:w-auto" type="submit">Save selection</button>
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                         Qualifications from this CV guide the search, and readable job postings are scored against it. Your target roles and locations still guide where the hunt looks. This does not change CV selections on existing applications.
@@ -200,14 +209,14 @@ export default async function DailyHuntPage({
                           <span className="badge border-status-assessment/30 bg-status-assessment/5 text-status-assessment">{review} to review</span>
                           <span className="badge border-status-rejected/30 bg-status-rejected/5 text-status-rejected">{excluded} excluded</span>
                             </div>
-                            {batch.searchWarnings.length > 0 && (
+                            {visibleSearchWarnings.length > 0 && (
                               <p className="mt-3 rounded-lg border border-status-assessment/30 bg-status-assessment/5 px-3 py-2 text-xs text-muted-foreground">
-                                {batch.searchWarnings.join(" · ")}
+                                {visibleSearchWarnings.join(" · ")}
                               </p>
                             )}
                             {batch.items.length === 0 ? (
                               <p className="mt-4 rounded-lg bg-muted/60 p-4 text-sm text-muted-foreground">
-                                No new jobs surfaced. Try changing your target roles or locations in your Profile.
+                                No jobs to show for this search. Try again later or adjust your target roles or location in Profile.
                               </p>
                             ) : (
                               <ul className="mt-4 space-y-3">
