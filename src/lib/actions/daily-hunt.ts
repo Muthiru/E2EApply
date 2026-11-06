@@ -232,9 +232,9 @@ export async function trackDailyHuntItem(
       if (item.applicationId) return item.applicationId;
 
       // Serialize the same user's attempts to track a posting across batches too.
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${item.url}))`;
+      await tx.$queryRaw`WITH advisory_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${item.url}))) SELECT 1::integer FROM advisory_lock`;
       const identityKey = `${normalizeJobIdentity(item.title)}::${normalizeJobIdentity(item.company ?? "")}`;
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${identityKey}))`;
+      await tx.$queryRaw`WITH advisory_lock AS MATERIALIZED (SELECT pg_advisory_xact_lock(hashtext(${userId}), hashtext(${identityKey}))) SELECT 1::integer FROM advisory_lock`;
       let application = await tx.application.findFirst({
         where: { user: { clerkId: userId }, job: { sourceUrl: item.url } },
         select: { id: true },
