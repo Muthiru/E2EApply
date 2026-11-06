@@ -3,6 +3,12 @@ import mammoth from "mammoth";
 
 export type CvFileType = "pdf" | "docx";
 
+export function sanitizeExtractedCvText(text: string): string {
+  // PostgreSQL text columns reject NUL bytes. Some PDF text extractors preserve
+  // embedded NULs from the source file, so remove them before AI or DB use.
+  return text.replace(/\u0000/g, " ");
+}
+
 export function detectCvType(
   name: string,
   mimeType: string | null,
@@ -25,10 +31,10 @@ export async function extractCvText(
 ): Promise<string> {
   if (type === "pdf") {
     const { text } = await extractText(new Uint8Array(data));
-    return Array.isArray(text) ? text.join("\n") : text;
+    return sanitizeExtractedCvText(Array.isArray(text) ? text.join("\n") : text);
   }
 
   const buffer = Buffer.from(data);
   const result = await mammoth.extractRawText({ buffer });
-  return result.value;
+  return sanitizeExtractedCvText(result.value);
 }
