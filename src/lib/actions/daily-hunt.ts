@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { fetchJobPageText } from "@/lib/job/fetch";
+import { fetchJobPageText, fetchJobPostingDate } from "@/lib/job/fetch";
 import { hasJobPostingEvidence } from "@/lib/job/extract";
 import { buildCandidateProfileText, PROFILE_INCLUDE } from "@/lib/job/context";
 import {
@@ -93,6 +93,28 @@ function isFreshDailyHuntCandidate(candidate: { publishedAt?: string | null; sni
     timestamp >= now - MAX_POST_AGE_MS;
 }
 
+async function verifyMissingBoardDates(
+  candidates: DiscoverCandidate[],
+  limit: number,
+): Promise<DiscoverCandidate[]> {
+  const verified = candidates.slice(0, limit * 2);
+  let nextIndex = 0;
+  const workerCount = Math.min(4, verified.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < verified.length) {
+      const index = nextIndex++;
+      const candidate = verified[index];
+      if (candidate.source !== "jina" || candidate.publishedAt) continue;
+
+      const publishedAt = await fetchJobPostingDate(candidate.url);
+      if (publishedAt) verified[index] = { ...candidate, publishedAt };
+    }
+  }));
+
+  return verified;
+}
+
 function isClosedPosting(text: string | null | undefined): boolean {
   return Boolean(text && CLOSED_POSTING_SIGNALS.test(text));
 }
@@ -108,6 +130,31 @@ export async function createDailyHuntBatch(): Promise<void> {
   });
 
   revalidatePath("/dashboard/daily-hunt");
+}
+
+export type DeleteDailyHuntBatchResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function deleteDailyHuntBatch(
+  batchId: string,
+): Promise<DeleteDailyHuntBatchResult> {
+  const { userId } = await auth.protect();
+  if (typeof batchId !== "string") {
+    return { ok: false, error: "Invalid batch." };
+  }
+  const id = batchId.trim();
+  if (!id) return { ok: false, error: "Invalid batch." };
+
+  const result = await prisma.dailyHuntBatch.deleteMany({
+    where: { id, user: { clerkId: userId } },
+  });
+  if (result.count === 0) {
+    return { ok: false, error: "Batch not found." };
+  }
+
+  revalidatePath("/dashboard/daily-hunt");
+  return { ok: true };
 }
 
 export async function saveDailyHuntMasterCv(
@@ -322,9 +369,10 @@ export async function buildDailyHuntBatch(
   });
 
   const allCandidates = dedupeCandidates(searches.flatMap((search) => search.candidates));
-  const candidatePool = filterTrackedCandidates(allCandidates, trackedJobs)
-    .filter(isFreshDailyHuntCandidate)
-    .slice(0, searchLimit);
+  const untrackedCandidates = filterTrackedCandidates(allCandidates, trackedJobs);
+  const candidatesWithDates = await verifyMissingBoardDates(untrackedCandidates, searchLimit);
+  const freshCandidates = candidatesWithDates.filter(isFreshDailyHuntCandidate);
+  const candidatePool = freshCandidates.slice(0, searchLimit);
   const primaryLocationCandidateUrls = new Set(
     (searches[0]?.candidates ?? []).map((candidate) => candidate.url),
   );
@@ -503,14 +551,20 @@ export async function buildDailyHuntBatch(
     ? ["Some jobs could not be saved. Run the search again to retry."]
     : [];
   const warnings = [...saveWarnings];
-  if (hasSearchFailures) {
-    warnings.push("Some job-search sources were unavailable. This list may be incomplete; only jobs found in this search are shown.");
+  if (hasSearchFailures && savedUrls.length === 0) {
+    warnings.push("No eligible jobs were saved, and some search sources were unavailable. Try again later for more complete coverage.");
   }
   if (closedPostingCount > 0) {
     warnings.push(`${closedPostingCount} posting${closedPostingCount === 1 ? " appears" : "s appear"} to be closed and ${closedPostingCount === 1 ? "was" : "were"} removed.`);
   }
-  if (candidatePool.length < searchLimit) {
-    warnings.push("Only jobs posted within the last 10 days are included. Listings without a reliable date are skipped.");
+  if (allCandidates.length === 0) {
+    warnings.push("The available search sources returned no job postings for these roles and locations.");
+  } else if (untrackedCandidates.length === 0) {
+    warnings.push("All results were already in your Applications tracker.");
+  } else if (freshCandidates.length === 0) {
+    warnings.push("Search results were found, but none had a verifiable posting date within the last 10 days, so they were excluded.");
+  } else if (freshCandidates.length < searchLimit) {
+    warnings.push(`Found ${freshCandidates.length} posting${freshCandidates.length === 1 ? "" : "s"} with a verifiable date within the last 10 days. Older or undated postings were excluded.`);
   }
   if (masterCv && assessments.some(({ score }) => !score)) {
     warnings.push("Some jobs couldn’t be checked against your Master CV. They’re marked Review.");

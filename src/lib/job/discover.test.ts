@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   dedupeCandidates,
   estimateMatch,
@@ -8,9 +8,12 @@ import {
   isJobPostingTitle,
   isJobPostingUrl,
   parseJinaSearchResults,
+  parseJinaBoardListings,
   parseJobicyPayload,
   parseMusePayload,
   parseRemoteOkPayload,
+  searchWithJina,
+  JOB_FEED_SOURCES,
   buildJobSearchQuery,
   rankCandidatesByQuery,
   scoreByQueryWords,
@@ -30,6 +33,13 @@ const baseCandidate = (overrides: Partial<DiscoverCandidate> = {}): DiscoverCand
 });
 
 describe("parseJinaSearchResults", () => {
+  it("includes the public SOLID.Jobs RSS source", () => {
+    expect(JOB_FEED_SOURCES).toContainEqual({
+      name: "SOLID.Jobs",
+      url: "https://solid.jobs/rss/job-offers",
+    });
+  });
+
   it("parses title-link lines followed by snippet text", () => {
     const markdown = [
       "# Search Results",
@@ -54,6 +64,26 @@ describe("parseJinaSearchResults", () => {
     expect(results[1].title).toBe("DevOps Lead - Globex");
   });
 
+  it("parses Jina's numbered Title, URL Source, and Description format", () => {
+    const results = parseJinaSearchResults([
+      "[1] Title: Oferta pracy AI-Native Software Engineer, Booksy, Warszawa",
+      "[1] URL Source: https://www.pracuj.pl/praca/ai-native-software-engineer-warszawa,oferta,1004747666",
+      "[1] Description: Python and JavaScript role based in Poland.",
+      "Additional description text.",
+      "",
+      "[2] Title: Backend Developer",
+      "[2] URL Source: https://www.pracuj.pl/praca/backend-developer-krakow,oferta,1004747667",
+      "[2] Description: Build backend services.",
+    ].join("\n"));
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({
+      title: "Oferta pracy AI-Native Software Engineer, Booksy, Warszawa",
+      url: "https://www.pracuj.pl/praca/ai-native-software-engineer-warszawa,oferta,1004747666",
+      snippet: "Python and JavaScript role based in Poland.\nAdditional description text.",
+    });
+  });
+
   it("respects the limit", () => {
     const lines = [1, 2, 3, 4, 5].flatMap((n) => [
       `[Job ${n}](https://jobs.lever.co/acme/${n})`,
@@ -75,6 +105,60 @@ describe("parseJinaSearchResults", () => {
     const results = parseJinaSearchResults(markdown, 10);
     expect(results).toHaveLength(1);
     expect(results[0].title).toBe("Real Job");
+  });
+
+  it("extracts individual Pracuj jobs and Polish publication dates from board search pages", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response([
+      "# Praca software engineer, Warszawa",
+      "[1] URL Source: https://www.pracuj.pl/praca/software-engineer;kw/warszawa;wp",
+      "Opublikowana: 5 listopada 2026",
+      "## [Frontend Developer — Warszawa](https://www.pracuj.pl/praca/frontend-developer-warszawa,oferta,1005025053 \"Zobacz ofertę Frontend Developer\")",
+      "React and TypeScript. Praca hybrydowa.",
+      "Opublikowana: 4 listopada 2026",
+      "## [Backend Developer — Warszawa](https://www.pracuj.pl/praca/backend-developer-warszawa,oferta,1005025054 \"Zobacz ofertę Backend Developer\")",
+      "Python and PostgreSQL.",
+    ].join("\n"), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const results = await searchWithJina("Frontend Developer in Warszawa", 10, "pracuj.pl");
+      expect(results).toHaveLength(2);
+      expect(results[0]).toMatchObject({
+        title: "Frontend Developer — Warszawa",
+        url: "https://www.pracuj.pl/praca/frontend-developer-warszawa,oferta,1005025053",
+        publishedAt: "2026-11-05T00:00:00.000Z",
+      });
+      expect(fetchMock.mock.calls[0][1].headers["X-Site"]).toBe("https://www.pracuj.pl");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("extracts OLX listing links and relative publication dates", () => {
+    const results = parseJinaBoardListings([
+      "Wyniki wyszukiwania dla praca Warszawa",
+      "Opublikowana: 2 dni temu",
+      "## [Software Developer](https://www.olx.pl/oferta/praca/software-developer-ID123.html \"Oferta pracy\")",
+      "JavaScript, Warszawa",
+    ].join("\n"), "olx.pl");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe("Software Developer");
+    expect(results[0].publishedAt).toMatch(/^2026-11-0[4-5]T/);
+  });
+
+  it("recognizes a Pracuj posting published one week ago in Polish", () => {
+    const now = Date.now();
+    const results = parseJinaBoardListings([
+      "Opublikowana: 1 tydzień temu",
+      "## [Software Engineer](https://www.pracuj.pl/praca/software-engineer-warszawa,oferta,1005000001)",
+    ].join("\n"), "pracuj.pl");
+
+    expect(results).toHaveLength(1);
+    expect(results[0].publishedAt).not.toBeNull();
+    const age = now - Date.parse(results[0].publishedAt ?? "");
+    expect(age).toBeGreaterThanOrEqual(6 * 24 * 60 * 60 * 1000);
+    expect(age).toBeLessThan(8 * 24 * 60 * 60 * 1000);
   });
 
   it("drops job seeker profiles and company pages from job boards", () => {
@@ -118,6 +202,9 @@ describe("isJobPostingUrl", () => {
     expect(isJobPostingUrl("https://himalayas.app/jobs/backend-engineer")).toBe(true);
     expect(isJobPostingUrl("https://boards.greenhouse.io/acme/jobs/4567890")).toBe(true);
     expect(isJobPostingUrl("https://jobs.lever.co/acme/senior-engineer")).toBe(true);
+    expect(isJobPostingUrl("https://solid.jobs/offer/senior-engineer-123")).toBe(true);
+    expect(isJobPostingUrl("https://www.pracuj.pl/praca/frontend-developer-warszawa%2Coferta%2C1005025053")).toBe(true);
+    expect(isJobPostingUrl("https://www.olx.pl/oferta/praca/frontend-developer-CID4-ID123.html")).toBe(true);
   });
 
   it("rejects job seeker profiles on the named job boards", () => {
@@ -129,6 +216,8 @@ describe("isJobPostingUrl", () => {
     expect(isJobPostingUrl("https://www.glassdoor.com/profile/jane-smith.htm")).toBe(false);
     expect(isJobPostingUrl("https://himalayas.app/companies/acme")).toBe(false);
     expect(isJobPostingUrl("https://himalayas.app/@johndoe")).toBe(false);
+    expect(isJobPostingUrl("https://www.pracuj.pl/praca/it")).toBe(false);
+    expect(isJobPostingUrl("https://www.olx.pl/oferty/praca/")).toBe(false);
   });
 
   it("rejects candidate profiles and portfolio pages from web search", () => {
@@ -181,6 +270,8 @@ describe("isDiscoverableJobUrl", () => {
   it("accepts configured job boards and ATS sources", () => {
     expect(isDiscoverableJobUrl("https://jobs.lever.co/acme/backend")).toBe(true);
     expect(isDiscoverableJobUrl("https://boards.greenhouse.io/acme/jobs/123")).toBe(true);
+    expect(isDiscoverableJobUrl("https://www.pracuj.pl/praca/backend-developer-warszawa%2Coferta%2C1005025053")).toBe(true);
+    expect(isDiscoverableJobUrl("https://www.olx.pl/oferta/praca/backend-developer-CID4-ID123.html")).toBe(true);
   });
 
   it("rejects custom domains even when their title looks like a job", () => {

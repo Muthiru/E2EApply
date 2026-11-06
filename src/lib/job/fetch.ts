@@ -27,6 +27,109 @@ export function extractPageText(html: string): string {
     .trim();
 }
 
+function collectJobPostingDates(value: unknown, dates: string[]): void {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectJobPostingDates(item, dates));
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  const record = value as Record<string, unknown>;
+  const type = record["@type"];
+  const types = Array.isArray(type) ? type : [type];
+  const isJobPosting = types.some(
+    (item) => typeof item === "string" && item.toLowerCase() === "jobposting",
+  );
+  if (isJobPosting) {
+    for (const key of ["datePosted", "datePublished", "dateOfInitialPublicationUtc"]) {
+      const date = record[key];
+      if (typeof date === "string" && Number.isFinite(Date.parse(date))) {
+        dates.push(date);
+      }
+    }
+  }
+
+  for (const [key, child] of Object.entries(record)) {
+    if (key === "dateOfInitialPublicationUtc" && typeof child === "string" && Number.isFinite(Date.parse(child))) {
+      dates.push(child);
+    } else if (child && typeof child === "object") {
+      collectJobPostingDates(child, dates);
+    }
+  }
+}
+
+export function extractJobPostingDate(html: string): string | null {
+  const dates: string[] = [];
+  const jsonLdScripts = html.matchAll(
+    /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
+
+  for (const match of jsonLdScripts) {
+    try {
+      collectJobPostingDates(JSON.parse(match[1].trim()), dates);
+    } catch {
+      // Ignore malformed structured data and try the board's embedded posting metadata.
+    }
+  }
+
+  const embeddedDates = html.matchAll(
+    /["']dateOfInitialPublicationUtc["']\s*:\s*["']([^"']+)["']/gi,
+  );
+  for (const match of embeddedDates) {
+    if (Number.isFinite(Date.parse(match[1]))) dates.push(match[1]);
+  }
+
+  return dates[0] ?? null;
+}
+
+const DATE_LOOKUP_HOSTS = ["solid.jobs", "pracuj.pl", "olx.pl"];
+
+function isSupportedJobPostingUrl(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  if (host === "solid.jobs" || host.endsWith(".solid.jobs")) return /^\/offer\//i.test(url.pathname);
+  if (host === "pracuj.pl" || host.endsWith(".pracuj.pl")) {
+    return /^\/praca\/.*(?:,|%2c)oferta(?:,|%2c)\d+/i.test(url.pathname);
+  }
+  if (host === "olx.pl" || host.endsWith(".olx.pl")) return /^\/oferta\/praca\//i.test(url.pathname);
+  return false;
+}
+
+export async function fetchJobPostingDate(url: string): Promise<string | null> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (
+    parsed.protocol !== "https:" ||
+    !DATE_LOOKUP_HOSTS.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)) ||
+    !isSupportedJobPostingUrl(parsed)
+  ) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(parsed, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (compatible; E2E-Apply/1.0; job-search assistant)",
+        accept: "text/html,application/xhtml+xml",
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok || !(response.headers.get("content-type") ?? "").includes("text/html")) {
+      return null;
+    }
+    if (Number(response.headers.get("content-length") ?? 0) > 2_000_000) return null;
+    const html = await response.text();
+    if (html.length > 2_000_000) return null;
+    return extractJobPostingDate(html);
+  } catch {
+    return null;
+  }
+}
+
 export function jinaReaderUrl(rawUrl: string): string {
   return `https://r.jina.ai/${rawUrl}`;
 }
