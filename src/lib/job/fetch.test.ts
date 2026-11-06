@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  extractJobPostingDate,
   extractPageText,
+  fetchJobPostingDate,
   fetchJobPageText,
   fetchPageViaJinaReader,
   isLinkedInSearchUrl,
@@ -60,6 +62,47 @@ describe("extractPageText", () => {
 
   it("collapses whitespace", () => {
     expect(extractPageText("<p>line1\n\n   line2</p>")).toBe("line1 line2");
+  });
+});
+
+describe("extractJobPostingDate", () => {
+  it("reads the datePosted field from JobPosting JSON-LD", () => {
+    const html = `<script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","datePosted":"2026-11-03T09:00:00Z"}</script>`;
+    expect(extractJobPostingDate(html)).toBe("2026-11-03T09:00:00Z");
+  });
+
+  it("reads the original publication date from embedded board metadata", () => {
+    const html = `<script>window.data={"dateOfInitialPublicationUtc":"2026-11-02T12:00:00Z"}</script>`;
+    expect(extractJobPostingDate(html)).toBe("2026-11-02T12:00:00Z");
+  });
+
+  it("returns null when the page has no reliable posting date", () => {
+    expect(extractJobPostingDate("<html><body>Senior Engineer</body></html>")).toBeNull();
+  });
+});
+
+describe("fetchJobPostingDate", () => {
+  it("reads date metadata from supported public job-board pages", async () => {
+    const requested: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      requested.push(String(input));
+      return new Response(
+        `<script type="application/ld+json">{"@type":"JobPosting","datePosted":"2026-11-03"}</script>`,
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }));
+
+    const url = "https://www.pracuj.pl/praca/backend-dev,oferta,100000001";
+    await expect(fetchJobPostingDate(url)).resolves.toBe("2026-11-03");
+    expect(requested).toEqual([url]);
+  });
+
+  it("does not fetch an unsupported host", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchJobPostingDate("https://example.com/jobs/123")).resolves.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

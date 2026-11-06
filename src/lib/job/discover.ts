@@ -11,7 +11,7 @@ export type DiscoverCandidate = {
 };
 
 export type ChannelReport = {
-  channel: "exa" | "jina" | "rss" | "board";
+  channel: "exa" | "jina" | "rss" | "board" | "pracuj.pl" | "olx.pl";
   ok: boolean;
   count: number;
   error?: string;
@@ -59,6 +59,9 @@ const JOB_BOARD_DOMAINS = [
   "smartrecruiters.com",
   "myworkdayjobs.com",
   "freehire.me",
+  "solid.jobs",
+  "pracuj.pl",
+  "olx.pl",
 ];
 
 type TrackedJob = {
@@ -166,6 +169,9 @@ const JOB_BOARD_RULES: { hostSuffix: string; accepts: RegExp }[] = [
   { hostSuffix: "wellfound.com", accepts: /^\/job\// },
   { hostSuffix: "greenhouse.io", accepts: /^\/[^/]+\/jobs?\// },
   { hostSuffix: "workable.com", accepts: /^\/j\// },
+  { hostSuffix: "solid.jobs", accepts: /^\/offer\//i },
+  { hostSuffix: "pracuj.pl", accepts: /^\/praca\/.*(?:,|%2c)oferta(?:,|%2c)\d+/i },
+  { hostSuffix: "olx.pl", accepts: /^\/oferta\/praca\//i },
 ];
 
 const NON_JOB_PATH_PATTERNS: RegExp[] = [
@@ -324,9 +330,118 @@ function keepCandidate(candidate: DiscoverCandidate): boolean {
 }
 
 function extractJinaLinkData(line: string): { title: string; url: string } | null {
-  const link = /^\[(.+?)\]\((https?:\/\/[^)\s]+)\)$/.exec(line);
+  const normalizedLine = line.replace(/^#{1,6}\s+/, "");
+  const link = /^\[([^\]]+?)\]\((https?:\/\/\S+?)(?:\s+["'][^)]*["'])?\)$/.exec(normalizedLine);
   if (!link) return null;
-  return { title: link[1].trim(), url: link[2] };
+  return { title: link[1].replace(/\\([\\_*{}\[\]()#+.!|>~-])/g, "$1").trim(), url: link[2] };
+}
+
+const POLISH_MONTHS: Record<string, number> = {
+  stycznia: 0,
+  lutego: 1,
+  marca: 2,
+  kwietnia: 3,
+  maja: 4,
+  czerwca: 5,
+  lipca: 6,
+  sierpnia: 7,
+  września: 8,
+  października: 9,
+  listopada: 10,
+  grudnia: 11,
+};
+
+function parseBoardPublicationDate(line: string): string | null {
+  const dateText = line.replace(/^.*?\b(?:opublikowan[aoe]|published|posted|dodano|added)\s*:\s*/i, "").trim();
+  if (dateText === line.trim()) return null;
+
+  const polishDate = /^(\d{1,2})\s+(stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia)\s+(20\d{2})/i.exec(dateText);
+  if (polishDate) {
+    const month = POLISH_MONTHS[polishDate[2].toLowerCase()];
+    return new Date(Date.UTC(Number(polishDate[3]), month, Number(polishDate[1]))).toISOString();
+  }
+
+  const englishDate = Date.parse(dateText);
+  if (Number.isFinite(englishDate)) return new Date(englishDate).toISOString();
+
+  const lowered = dateText.toLowerCase();
+  const now = new Date();
+  if (/^(today|dzisiaj|dzis)\b/.test(lowered)) return now.toISOString();
+  if (/^(yesterday|wczoraj)\b/.test(lowered)) {
+    now.setUTCDate(now.getUTCDate() - 1);
+    return now.toISOString();
+  }
+
+  const relative = /^(\d+)\s+(hours?|godzin(?:a|y|ę)?|days?|dni|tydzień|tydzien|tygodni(?:e|a)?|weeks?)\s+(?:ago|temu)\b/i.exec(lowered);
+  if (!relative) return null;
+  const amount = Number.parseInt(relative[1], 10);
+  const unit = relative[2].toLowerCase();
+  const days = /week|tydzie|tygodn/.test(unit) ? amount * 7 : /hour|godzin/.test(unit) ? amount / 24 : amount;
+  now.setTime(now.getTime() - days * 24 * 60 * 60 * 1000);
+  return now.toISOString();
+}
+
+function cleanJinaSnippet(lines: string[]): string | null {
+  const text = lines
+    .map((line) => line
+      .replace(/^#{1,6}\s+/, "")
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g, "$1")
+      .replace(/[*_`>#]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 3000);
+  return text || null;
+}
+
+export function parseJinaBoardListings(
+  markdown: string,
+  site: "pracuj.pl" | "olx.pl",
+  limit = SEARCH_LIMIT,
+): DiscoverCandidate[] {
+  const lines = markdown.split(/\r?\n/);
+  const candidates: DiscoverCandidate[] = [];
+  let pendingPublishedAt: string | null = null;
+
+  for (let index = 0; index < lines.length && candidates.length < limit; index++) {
+    const line = lines[index].trim();
+    const publicationDate = parseBoardPublicationDate(line);
+    if (publicationDate) {
+      pendingPublishedAt = publicationDate;
+      continue;
+    }
+
+    const link = extractJinaLinkData(line);
+    if (!link || !isJobPostingUrl(link.url)) continue;
+    let hostname = "";
+    try {
+      hostname = new URL(link.url).hostname.toLowerCase();
+    } catch {
+      continue;
+    }
+    if (!hostname.endsWith(site)) continue;
+
+    const nextListingIndex = lines.findIndex((candidateLine, candidateIndex) =>
+      candidateIndex > index && isJobPostingUrl(extractJinaLinkData(candidateLine.trim())?.url ?? ""),
+    );
+    const sectionEnd = nextListingIndex > index ? nextListingIndex : Math.min(lines.length, index + 12);
+    const snippet = cleanJinaSnippet(lines.slice(index, sectionEnd));
+    candidates.push({
+      title: link.title,
+      company: null,
+      url: link.url,
+      snippet,
+      publishedAt: pendingPublishedAt,
+      source: "jina",
+      estimatedMatch: null,
+      matchedSkills: [],
+    });
+    pendingPublishedAt = null;
+  }
+
+  return candidates.filter(keepCandidate);
 }
 
 export function parseJinaSearchResults(
@@ -336,13 +451,46 @@ export function parseJinaSearchResults(
   const candidates: DiscoverCandidate[] = [];
   let current: DiscoverCandidate | null = null;
 
+  const saveCurrent = () => {
+    if (current?.url) candidates.push(current);
+    current = null;
+  };
+
   for (const rawLine of markdown.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line) continue;
 
+    const jinaTitle = /^\[\d+\]\s+Title:\s*(.+)$/i.exec(line);
+    if (jinaTitle) {
+      saveCurrent();
+      if (candidates.length >= limit) break;
+      current = {
+        title: jinaTitle[1].trim(),
+        url: "",
+        company: null,
+        snippet: null,
+        source: "jina",
+        estimatedMatch: null,
+        matchedSkills: [],
+      };
+      continue;
+    }
+
+    const jinaUrl = /^\[\d+\]\s+URL Source:\s*(https?:\/\/\S+)/i.exec(line);
+    if (jinaUrl && current) {
+      current.url = jinaUrl[1].replace(/[),.;]+$/, "");
+      continue;
+    }
+
+    const jinaDescription = /^\[\d+\]\s+Description:\s*(.*)$/i.exec(line);
+    if (jinaDescription && current) {
+      current.snippet = jinaDescription[1].trim();
+      continue;
+    }
+
     const linkData = extractJinaLinkData(line);
     if (linkData) {
-      if (current) candidates.push(current);
+      saveCurrent();
       if (candidates.length >= limit) break;
       current = {
         ...linkData,
@@ -355,12 +503,14 @@ export function parseJinaSearchResults(
       continue;
     }
 
-    if (current?.snippet === null) {
+    if (current && current.snippet === null) {
       current.snippet = stripHtml(line);
+    } else if (current) {
+      current.snippet = [current.snippet, stripHtml(line)].filter(Boolean).join("\n");
     }
   }
 
-  if (current && candidates.length < limit) candidates.push(current);
+  saveCurrent();
 
   return candidates.filter(keepCandidate);
 }
@@ -368,6 +518,7 @@ export function parseJinaSearchResults(
 export async function searchWithJina(
   query: string,
   limit = SEARCH_LIMIT,
+  site?: "pracuj.pl" | "olx.pl",
 ): Promise<DiscoverCandidate[]> {
   const searchQuery = buildJobSearchQuery(query);
   const response = await fetch(
@@ -377,6 +528,7 @@ export async function searchWithJina(
         ...(process.env.JINA_API_KEY
           ? { authorization: `Bearer ${process.env.JINA_API_KEY}` }
           : {}),
+        ...(site ? { "X-Site": `https://www.${site}` } : {}),
         accept: "text/plain,text/markdown",
       },
       redirect: "follow",
@@ -393,7 +545,24 @@ export async function searchWithJina(
     throw new Error("The search returned no readable results — try a broader query.");
   }
 
-  return parseJinaSearchResults(markdown, limit);
+  return site
+    ? parseJinaBoardListings(markdown, site, limit)
+    : parseJinaSearchResults(markdown, limit);
+}
+
+async function searchPolishBoard(
+  query: string,
+  limit: number,
+  site: "pracuj.pl" | "olx.pl",
+): Promise<DiscoverCandidate[]> {
+  const candidates = await searchWithJina(query, limit, site);
+  return candidates.filter((candidate) => {
+    try {
+      return new URL(candidate.url).hostname.toLowerCase().endsWith(site);
+    } catch {
+      return false;
+    }
+  });
 }
 
 async function searchExa(
@@ -477,6 +646,7 @@ export const JOB_FEED_SOURCES: { name: string; url: string }[] = [
   { name: "ReactJobs", url: "https://reactjs.jobboard.io/jobs.rss" },
   { name: "Python.org", url: "https://www.python.org/jobs/feed/rss/" },
   { name: "NodeJS Jobs", url: "https://nodejsjobs.app/rss" },
+  { name: "SOLID.Jobs", url: "https://solid.jobs/rss/job-offers" },
 ];
 
 type RssItem = {
@@ -1080,19 +1250,27 @@ export async function agentReachSearch(
   const settled = await Promise.allSettled([
     searchWithBoards(query, limit),
     exaKey ? searchWithExa(query, exaKey, limit) : searchWithJina(query, limit),
+    searchPolishBoard(query, limit, "pracuj.pl"),
+    searchPolishBoard(query, limit, "olx.pl"),
   ]);
 
   const channels: ChannelReport[] = [
     channelReport("board", settled[0]),
     channelReport(exaKey ? "exa" : "jina", settled[1]),
+    channelReport("pracuj.pl", settled[2]),
+    channelReport("olx.pl", settled[3]),
   ];
 
-  let webCandidates = settled[1].status === "fulfilled" ? settled[1].value : [];
+  let webCandidates = [
+    ...(settled[1].status === "fulfilled" ? settled[1].value : []),
+    ...(settled[2].status === "fulfilled" ? settled[2].value : []),
+    ...(settled[3].status === "fulfilled" ? settled[3].value : []),
+  ];
 
   if (exaKey && webCandidates.length === 0) {
     const jinaFallback = await searchWithJinaFallback(query, limit);
     channels.push(jinaFallback.report);
-    webCandidates = jinaFallback.candidates;
+    webCandidates = [...webCandidates, ...jinaFallback.candidates];
   }
 
   const candidates = rankCandidatesByQuery(

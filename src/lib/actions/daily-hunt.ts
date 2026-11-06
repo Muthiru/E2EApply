@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { fetchJobPageText } from "@/lib/job/fetch";
+import { fetchJobPageText, fetchJobPostingDate } from "@/lib/job/fetch";
 import { hasJobPostingEvidence } from "@/lib/job/extract";
 import { buildCandidateProfileText, PROFILE_INCLUDE } from "@/lib/job/context";
 import {
@@ -91,6 +91,28 @@ function isFreshDailyHuntCandidate(candidate: { publishedAt?: string | null; sni
   return Number.isFinite(timestamp) &&
     timestamp <= now + 24 * 60 * 60 * 1000 &&
     timestamp >= now - MAX_POST_AGE_MS;
+}
+
+async function verifyMissingBoardDates(
+  candidates: DiscoverCandidate[],
+  limit: number,
+): Promise<DiscoverCandidate[]> {
+  const verified = candidates.slice(0, limit * 2);
+  let nextIndex = 0;
+  const workerCount = Math.min(4, verified.length);
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < verified.length) {
+      const index = nextIndex++;
+      const candidate = verified[index];
+      if (candidate.source !== "jina" || candidate.publishedAt) continue;
+
+      const publishedAt = await fetchJobPostingDate(candidate.url);
+      if (publishedAt) verified[index] = { ...candidate, publishedAt };
+    }
+  }));
+
+  return verified;
 }
 
 function isClosedPosting(text: string | null | undefined): boolean {
@@ -322,9 +344,10 @@ export async function buildDailyHuntBatch(
   });
 
   const allCandidates = dedupeCandidates(searches.flatMap((search) => search.candidates));
-  const candidatePool = filterTrackedCandidates(allCandidates, trackedJobs)
-    .filter(isFreshDailyHuntCandidate)
-    .slice(0, searchLimit);
+  const untrackedCandidates = filterTrackedCandidates(allCandidates, trackedJobs);
+  const candidatesWithDates = await verifyMissingBoardDates(untrackedCandidates, searchLimit);
+  const freshCandidates = candidatesWithDates.filter(isFreshDailyHuntCandidate);
+  const candidatePool = freshCandidates.slice(0, searchLimit);
   const primaryLocationCandidateUrls = new Set(
     (searches[0]?.candidates ?? []).map((candidate) => candidate.url),
   );
@@ -503,15 +526,21 @@ export async function buildDailyHuntBatch(
   const saveWarnings = hasSaveFailures
     ? ["Some results could not be saved. Run the search again to retry." ]
     : [];
-  const warnings = [...new Set([...sourceWarnings, ...saveWarnings])];
-  if (hasSearchFailures) {
-    warnings.push("Search was incomplete; only postings refreshed during this search are shown.");
+  const warnings = [...saveWarnings];
+  if (hasSearchFailures && savedUrls.length === 0) {
+    warnings.push("No eligible jobs were saved, and some search sources were unavailable. Try again later for more complete coverage.");
   }
   if (closedPostingCount > 0) {
     warnings.push(`${closedPostingCount} posting${closedPostingCount === 1 ? " was" : "s were"} removed because applications appeared to be closed.`);
   }
-  if (candidatePool.length < searchLimit) {
-    warnings.push("Only postings dated within the last 10 days were included; postings without a reliable recent date were left out.");
+  if (allCandidates.length === 0) {
+    warnings.push("The available search sources returned no job postings for these roles and locations.");
+  } else if (untrackedCandidates.length === 0) {
+    warnings.push("All results were already in your Applications tracker.");
+  } else if (freshCandidates.length === 0) {
+    warnings.push("Search results were found, but none had a verifiable posting date within the last 10 days, so they were excluded.");
+  } else if (freshCandidates.length < searchLimit) {
+    warnings.push(`Found ${freshCandidates.length} posting${freshCandidates.length === 1 ? "" : "s"} with a verifiable date within the last 10 days. Older or undated postings were excluded.`);
   }
   if (masterCv && assessments.some(({ score }) => !score)) {
     warnings.push("Some job postings could not be read or CV-scored; those results are marked for manual review.");
