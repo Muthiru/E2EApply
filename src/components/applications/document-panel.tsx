@@ -87,10 +87,10 @@ function CvPreview({
 }>) {
   const modern = template === "modern";
   const compact = template === "compact";
-  const paddingClass = compact ? "p-8 sm:p-10" : modern ? "" : "p-10 sm:p-12";
+  const paddingClass = compact ? "p-5 sm:p-10" : "p-5 sm:p-12";
 
   const pageClass = [
-    "mx-auto min-h-[620px] w-[760px] max-w-full bg-white text-neutral-950 sm:min-h-[760px]",
+    "mx-auto min-h-[480px] w-full max-w-[760px] bg-white text-neutral-950 sm:min-h-[760px]",
     "shadow-sm ring-1 ring-border",
     paddingClass,
   ].join(" ");
@@ -111,16 +111,16 @@ function CvPreview({
   }
 
   const contact = (
-    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-neutral-600 [overflow-wrap:anywhere] sm:text-[11px]">
       {finalDetailLines.map((line, idx) => {
         const lineKey = `det-${idx}`;
         const href = linkHref(line);
         return href ? (
-          <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
+          <a key={lineKey} href={href} className="break-words text-blue-700 underline underline-offset-2 [overflow-wrap:anywhere]">
             {line}
           </a>
         ) : (
-          <span key={lineKey}>{line}</span>
+          <span key={lineKey} className="break-words [overflow-wrap:anywhere]">{line}</span>
         );
       })}
     </div>
@@ -134,8 +134,8 @@ function CvPreview({
   }
 
   const bodyClass = compact
-    ? "text-[11px] leading-[1.55]"
-    : "text-[12px] leading-[1.65]";
+    ? "break-words text-[10px] leading-[1.55] [overflow-wrap:anywhere] sm:text-[11px]"
+    : "break-words text-[11px] leading-[1.6] [overflow-wrap:anywhere] sm:text-[12px] sm:leading-[1.65]";
   const bodySpace = compact ? "space-y-1.5" : "space-y-2";
 
   const body = (
@@ -159,7 +159,7 @@ function CvPreview({
           return (
             <p key={lineKey} className={isCvBulletLine(trimmed) ? `flex gap-2 ${bodyClass}` : bodyClass}>
               {isCvBulletLine(trimmed) && <span aria-hidden="true" className="mt-[0.15rem] text-blue-700">•</span>}
-              <span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
                 {linkedParts.map((part, partIndex) => part.href ? (
                   <a key={`${lineKey}-link-${partIndex}`} href={part.href} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline underline-offset-2 hover:text-foreground">{part.text}</a>
                 ) : <span key={`${lineKey}-text-${partIndex}`}>{part.text}</span>)}
@@ -203,23 +203,23 @@ function CvPreview({
 
   if (modern) {
     return (
-      <div className={`${pageClass} p-10 sm:p-12`}>
+      <div className={`${pageClass} p-5 sm:p-12`}>
         <div className="border-b-2 border-blue-600 pb-4">
           {nameLine && (
-            <p className="text-2xl font-bold uppercase text-neutral-950">
+            <p className="break-words text-xl font-bold uppercase text-neutral-950 [overflow-wrap:anywhere] sm:text-2xl">
               {nameLine}
             </p>
           )}
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-neutral-600">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-neutral-600 [overflow-wrap:anywhere] sm:text-[11px]">
             {finalDetailLines.map((line, idx) => {
               const lineKey = `det2-${idx}`;
               const href = linkHref(line);
               return href ? (
-                <a key={lineKey} href={href} className="text-blue-700 underline underline-offset-2">
+                <a key={lineKey} href={href} className="break-words text-blue-700 underline underline-offset-2 [overflow-wrap:anywhere]">
                   {line}
                 </a>
               ) : (
-                <span key={lineKey}>{line}</span>
+                <span key={lineKey} className="break-words [overflow-wrap:anywhere]">{line}</span>
               );
             })}
           </div>
@@ -232,7 +232,7 @@ function CvPreview({
   return (
     <div className={pageClass}>
       {nameLine && (
-        <p className={compact ? "text-xl font-bold uppercase" : "text-2xl font-bold uppercase"}>
+        <p className={`break-words font-bold uppercase [overflow-wrap:anywhere] ${compact ? "text-xl" : "text-xl sm:text-2xl"}`}>
           {nameLine}
         </p>
       )}
@@ -252,9 +252,9 @@ function LetterPreview({
   const modern = template === "modern";
   const compact = template === "compact";
   const pageClass = [
-    "mx-auto min-h-[620px] w-[760px] max-w-full bg-white text-neutral-950 sm:min-h-[760px]",
+    "mx-auto min-h-[480px] w-full max-w-[760px] bg-white text-neutral-950 sm:min-h-[760px]",
     "shadow-sm ring-1 ring-border",
-    compact ? "p-8 sm:p-10" : "p-10 sm:p-12",
+    compact ? "p-5 sm:p-10" : "p-5 sm:p-12",
     modern ? "border-t-4 border-blue-600" : "",
   ].join(" ");
 
@@ -265,7 +265,7 @@ function LetterPreview({
     .map((paragraph, idx) => {
       const pKey = `lp-${idx}`;
       return (
-        <p key={pKey} className={compact ? "text-[11px] leading-[1.6]" : "text-[12px] leading-[1.75]"}>
+        <p key={pKey} className={`break-words [overflow-wrap:anywhere] ${compact ? "text-[10px] leading-[1.6] sm:text-[11px]" : "text-[11px] leading-[1.65] sm:text-[12px] sm:leading-[1.75]"}`}>
             {splitLinkedText(paragraph).map((part, partIndex) => part.href ? (
               <a key={`${pKey}-link-${partIndex}`} href={part.href} className="text-blue-700 underline underline-offset-2">{part.text}</a>
             ) : <span key={`${pKey}-text-${partIndex}`}>{part.text}</span>)}
@@ -392,7 +392,7 @@ function TemplatePicker({
       <p className="text-xs font-medium uppercase text-muted-foreground">
         {label}
       </p>
-      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mt-2 flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
         {templates.map((template) => {
           const selected = value === template.id;
           return (
@@ -403,7 +403,7 @@ function TemplatePicker({
               onClick={() => onChange(template.id)}
               disabled={disabled}
               title={template.description}
-              className={`rounded-md border bg-white text-left shadow-sm transition disabled:opacity-50 ${selected
+              className={`w-36 shrink-0 snap-start rounded-md border bg-white text-left shadow-sm transition disabled:opacity-50 sm:w-auto ${selected
                 ? "border-primary ring-2 ring-primary/20"
                 : "border-border hover:border-primary/40"
                 }`}
@@ -618,13 +618,13 @@ function DocumentPanelInner({
   };
 
   const actionButtons = (type: "CV" | "COVER_LETTER") => (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
       <button
         type="button"
         onClick={() =>
           setEditing((current) => (current === type ? null : type))
         }
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
+        className="btn btn-secondary min-h-9 w-full min-w-0 whitespace-normal px-2 py-1.5 text-xs sm:w-auto sm:px-3 sm:text-sm"
       >
         {editing === type ? "Done editing" : "Edit"}
       </button>
@@ -632,21 +632,21 @@ function DocumentPanelInner({
         type="button"
         onClick={() => handleSaveFinal(type)}
         disabled={saving}
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
+        className="btn btn-secondary min-h-9 w-full min-w-0 whitespace-normal px-2 py-1.5 text-xs sm:w-auto sm:px-3 sm:text-sm"
       >
         {saving ? "Saving…" : "Save as final"}
       </button>
       <a
         href={pdfHref(type) + "&format=docx"}
         download
-        className="btn btn-secondary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
+        className="btn btn-secondary min-h-9 w-full min-w-0 whitespace-normal px-2 py-1.5 text-xs sm:w-auto sm:px-3 sm:text-sm"
       >
         Download DOCX
       </a>
       <a
         href={pdfHref(type)}
         download
-        className="btn btn-primary min-h-9 px-3 py-1.5 text-sm min-w-0 flex-1 sm:flex-none"
+        className="btn btn-primary min-h-9 w-full min-w-0 whitespace-normal px-2 py-1.5 text-xs sm:w-auto sm:px-3 sm:text-sm"
       >
         Download PDF
       </a>
@@ -690,7 +690,7 @@ function DocumentPanelInner({
 
   return (
     <ActionLoadingOverlay active={generating || regenerating || saving || checking} message={loadingMessage}>
-    <section className="panel p-5 sm:p-6">
+    <section className="panel min-w-0 p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between max-w-full">
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold">Tailored documents</h2>
@@ -713,17 +713,17 @@ function DocumentPanelInner({
         <div className="mt-4 space-y-8">
           <div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-medium">
-                CV{" "}
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-medium">
+                <span>CV</span>
                 {cvStatusBlock}
                 {alignment && (
                   <span
-                    className={`badge ml-2 ${matchBadgeClass(alignment.score)}`}
+                    className={`badge ${matchBadgeClass(alignment.score)}`}
                   >
                     keyword score {alignment.score}%
                   </span>
                 )}
-              </p>
+              </div>
               {cv && actionButtons("CV")}
             </div>
             <div className="mt-3">
@@ -764,7 +764,7 @@ function DocumentPanelInner({
             )}
 
             {hasCvPreview && editing !== "CV" && (
-              <div className="mt-2 overflow-x-auto pb-2">
+              <div className="mt-2 min-w-0 overflow-x-auto pb-2">
                 <CvPreview
                   text={renderedCvText}
                   header={header}
@@ -794,8 +794,8 @@ function DocumentPanelInner({
 
           {coverLetter && (
             <div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-medium">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   Cover letter{" "}
                   <span className="text-muted-foreground">
                     v{coverLetter.version}
@@ -825,7 +825,7 @@ function DocumentPanelInner({
                   className="field-control mt-2 font-mono text-xs leading-relaxed"
                 />
               ) : (
-                <div className="mt-2 overflow-x-auto pb-2">
+                <div className="mt-2 min-w-0 overflow-x-auto pb-2">
                   <LetterPreview
                     text={renderedClText}
                     template={isClTemplateId(clTemplate) ? clTemplate : "classic"}

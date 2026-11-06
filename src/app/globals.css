@@ -118,12 +118,23 @@ select {
   gap: 1.25rem;
 }
 
+.page-stack > * {
+  min-width: 0;
+}
+
 .daily-hunt-search-results {
   position: relative;
 }
 
 .action-loading-shell {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.action-loading-content {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .action-loading-cover,

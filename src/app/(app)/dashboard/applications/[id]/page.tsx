@@ -38,12 +38,12 @@ export default async function ApplicationDetailPage({
     application.documents.find((d) => d.type === "COVER_LETTER") ?? null;
 
   return (
-    <div className="page-stack">
-      <div className="flex items-start justify-between gap-4 max-w-full">
+    <div className="page-stack min-w-0">
+      <div className="flex min-w-0 max-w-full items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
           <p className="eyebrow">Application detail</p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{job.title}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <h1 className="mt-2 break-words text-2xl font-bold tracking-tight [overflow-wrap:anywhere] sm:text-3xl">{job.title}</h1>
+          <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere] sm:text-base">
             {[job.company, job.location].filter(Boolean).join(" · ") || "Company unknown"}
             {job.salaryMin !== null && job.salaryMax !== null
               ? ` · $${job.salaryMin.toLocaleString()}–$${job.salaryMax.toLocaleString()}`
@@ -71,7 +71,7 @@ export default async function ApplicationDetailPage({
       </div>
 
       <ScoreLoadingBoundary>
-      <section className="panel p-5 sm:p-6">
+      <section className="panel min-w-0 p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between max-w-full">
           <div className="min-w-0 flex-1">
             <h2 className="font-semibold">Match score</h2>
@@ -79,10 +79,10 @@ export default async function ApplicationDetailPage({
               How this job fits your master profile.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 min-w-0">
+          <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:w-auto sm:flex-row sm:items-center">
             {job.matchScore !== null && (
               <span
-                className={`badge px-3 py-2 text-base ${matchBadgeClass(job.matchScore)}`}
+                className={`badge self-start px-3 py-2 text-base ${matchBadgeClass(job.matchScore)}`}
               >
                 {job.matchScore}%
               </span>
@@ -98,7 +98,7 @@ export default async function ApplicationDetailPage({
 
         {job.matchScore !== null && details && (
           <div className="mt-4 space-y-4">
-            <p className="text-sm leading-relaxed">{job.matchReasoning}</p>
+            <p className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">{job.matchReasoning}</p>
 
             {details.recommendation === "skip" && (
               <div className="rounded-md border border-status-rejected/40 bg-status-rejected/5 p-3 text-sm text-status-rejected">
@@ -117,7 +117,7 @@ export default async function ApplicationDetailPage({
                     details.matchedSkills.map((skill) => (
                       <span
                         key={skill}
-                        className="rounded-full border border-status-offer/40 px-2.5 py-0.5 text-xs font-medium text-status-offer"
+                        className="break-words rounded-full border border-status-offer/40 px-2.5 py-0.5 text-xs font-medium text-status-offer"
                       >
                         {skill}
                       </span>
@@ -136,7 +136,7 @@ export default async function ApplicationDetailPage({
                     details.missingSkills.map((skill) => (
                       <span
                         key={skill}
-                        className="rounded-full border border-status-rejected/40 px-2.5 py-0.5 text-xs font-medium text-status-rejected"
+                        className="break-words rounded-full border border-status-rejected/40 px-2.5 py-0.5 text-xs font-medium text-status-rejected"
                       >
                         {skill}
                       </span>
@@ -191,7 +191,7 @@ export default async function ApplicationDetailPage({
         projects={application.user.profile?.projects.map((project) => ({ name: project.name, url: project.url })) ?? []}
       />
 
-      <section className="panel p-5 sm:p-6">
+      <section className="panel min-w-0 p-4 sm:p-6">
         <h2 className="font-semibold">Job details</h2>
         <div className="mt-3 space-y-4 text-sm">
           {job.description && (
@@ -199,7 +199,7 @@ export default async function ApplicationDetailPage({
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Description
               </p>
-              <p className="mt-1 whitespace-pre-line leading-relaxed">
+              <p className="mt-1 whitespace-pre-line break-words leading-relaxed [overflow-wrap:anywhere]">
                 {job.description}
               </p>
             </div>
@@ -209,7 +209,7 @@ export default async function ApplicationDetailPage({
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Requirements
               </p>
-              <p className="mt-1 whitespace-pre-line leading-relaxed">
+              <p className="mt-1 whitespace-pre-line break-words leading-relaxed [overflow-wrap:anywhere]">
                 {job.requirements}
               </p>
             </div>
@@ -227,7 +227,7 @@ export default async function ApplicationDetailPage({
         </div>
       </section>
 
-      <section className="panel p-5 sm:p-6">
+      <section className="panel min-w-0 p-4 sm:p-6">
         <h2 className="font-semibold">Status history</h2>
         <StatusControl
           applicationId={application.id}

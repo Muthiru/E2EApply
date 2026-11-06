@@ -75,7 +75,7 @@ export function ScoreButton(props: Readonly<{
           disabled={isPending}
           value={selectedCvId ?? "none"}
           onChange={(e) => handleSelectCv(e.target.value)}
-          className="field-control min-w-0 flex-1 sm:w-56"
+          className="field-control w-full min-w-0 max-w-full sm:w-56"
         >
           <option value="none">No tailored CV selected</option>
           {masterCvs.map(cv => (
@@ -87,7 +87,7 @@ export function ScoreButton(props: Readonly<{
         type="button"
         onClick={handleScore}
         disabled={isPending || masterCvs.length === 0 || !selectedCvId}
-        className="btn btn-primary min-w-0 flex-1 sm:flex-none"
+        className="btn btn-primary w-full min-w-0 sm:w-auto"
       >
         {buttonText}
       </button>
